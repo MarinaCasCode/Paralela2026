@@ -1,4 +1,5 @@
 // Ejercicio 3: Hacer un simple Hello World con threads en C que identifica nucleos
+// compilacion: gcc -o helloWorldThreadsID helloWorldThreadsID.c -lpthread
 // Jimena Bejarano Sanchez C31074
 // Marina Castro Peralta C31886
 

@@ -1,4 +1,5 @@
 // Ejercicio 2: Hacer un simple Hello World con threads en C
+// compilacion: gcc -o helloWorldThreads helloWorldThreads.c -lpthread
 // Jimena Bejarano Sanchez C31074
 // Marina Castro Peralta C31886
 
