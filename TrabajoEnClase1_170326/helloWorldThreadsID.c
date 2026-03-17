@@ -26,6 +26,11 @@ int main() {
         pthread_create(&threads[i], NULL, printHello, (void*)&tids[i]);
     }
 
+    // esperar a que todos los threads terminen
+    for (i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
     pthread_exit(NULL); // Terminar el thread principal
     
     return 0;
