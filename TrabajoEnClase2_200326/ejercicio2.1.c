@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <pthread.h>
-#define NUM_THREADS 5 // Número de threads a crear
+#define NUM_THREADS 20 // Número de threads a crear
 #define ITERATIONS 10000000 // Número de iteraciones que cada thread realizará
 
 long sharedVariable = 0; // Variable compartida entre los threads
