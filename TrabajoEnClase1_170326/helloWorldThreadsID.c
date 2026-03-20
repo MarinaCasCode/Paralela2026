@@ -16,7 +16,7 @@ void* printHello(void *threadid) { // Función que será ejecutada por cada thre
 
 int main() {
     pthread_t threads[NUM_THREADS];
-    int tids[NUM_THREADS];
+    long tids[NUM_THREADS];
     long i;
     
     // Crear un nuevo thread que ejecutará la función printHello
