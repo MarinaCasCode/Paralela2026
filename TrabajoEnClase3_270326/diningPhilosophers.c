@@ -6,7 +6,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#define dormir(segundos) Sleep((segundos) * 1000)
+#else
 #include <unistd.h>
+#define dormir(segundos) sleep(segundos)
+#endif
 
 #define DURACION_TURNO 3
 #define DURACION_COMIDA 1
@@ -18,19 +25,30 @@ int cantidadFilosofos;
 int comenImpares = 1; // 1: comen impares, 0: comen pares
 
 int obtenerCantidadNucleos(void) {
-    int nucleos;
+#ifdef _WIN32
+    SYSTEM_INFO info;
+    GetSystemInfo(&info);
+    return (int)info.dwNumberOfProcessors;
+#else
+    int nucleos = 20;
     FILE* pipe = popen("nproc", "r");
 
-    fscanf(pipe, "%d", &nucleos);
-    pclose(pipe);
+    if (pipe != NULL) {
+        if (fscanf(pipe, "%d", &nucleos) != 1 || nucleos < 2) {
+            nucleos = 20;
+        }
+        pclose(pipe);
+    }
+
     return nucleos;
+#endif
 }
 
 void* alternarTurnos(void* arg) {
     (void)arg;
 
     while (1) {
-        sleep(DURACION_TURNO);
+        dormir(DURACION_TURNO);
 
         pthread_mutex_lock(&mutexTurno);
         comenImpares = 1 - comenImpares;
@@ -52,16 +70,16 @@ void* cicloFilosofo(void* arg) {
         pthread_mutex_unlock(&mutexTurno);
 
         if (!puedeComer) {
-            printf("F%d piensa\n", id);
-            sleep(1);
+            printf("Filosofo %d piensa\n", id + 1);
+            dormir(1);
             continue;
         }
 
         // toma ambos tenedores para poder comer
         pthread_mutex_lock(&tenedores[id]); // toma el tenedor izquierdo
         pthread_mutex_lock(&tenedores[(id + 1) % cantidadFilosofos]); // toma el tenedor derecho
-        printf("F%d come\n", id);
-        sleep(DURACION_COMIDA);
+        printf("Filosofo %d come\n", id + 1);
+        dormir(DURACION_COMIDA);
         // suelta ambos tenedores al terminar
         pthread_mutex_unlock(&tenedores[id]); // suelta el tenedor izquierdo
         pthread_mutex_unlock(&tenedores[(id + 1) % cantidadFilosofos]); // suelta el tenedor derecho
@@ -75,8 +93,11 @@ int main() {
     int* identificadores;
 
     cantidadFilosofos = obtenerCantidadNucleos();
-    if (cantidadFilosofos % 2 != 0) {
+    if (cantidadFilosofos % 2 != 0) { // asumimos que la cantidad de nucleos suele ser par
         cantidadFilosofos--;
+    }
+    if (cantidadFilosofos < 2) {
+        cantidadFilosofos = 2;
     }
 
     tenedores = malloc(sizeof(pthread_mutex_t) * cantidadFilosofos);
