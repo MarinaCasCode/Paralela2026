@@ -9,7 +9,7 @@
 #SBATCH --partition=kura
 
 # Compilar
-gcc diningPhilosophers.c -o diningPhilosophers -lpthread
+make
 
 if [ $? -ne 0 ]; then
     echo "Error de compilacion"
