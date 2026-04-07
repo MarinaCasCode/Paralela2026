@@ -1,6 +1,7 @@
 // Ejercicio Dining Philosophers
 // Jimena Bejarano Sanchez C31074
 // Marina Castro Peralta C31886
+// make
 // gcc diningPhilosophers.c -o diningPhilosophers -lpthread
 
 #include <stdio.h>
