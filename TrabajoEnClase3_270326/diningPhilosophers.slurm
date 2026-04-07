@@ -6,6 +6,7 @@
 #SBATCH --cpus-per-task=20
 #SBATCH --mem=512M
 #SBATCH --time=00:02:00
+#SBATCH --partition=normal
 
 # Compilar
 gcc diningPhilosophers.c -o diningPhilosophers -lpthread
