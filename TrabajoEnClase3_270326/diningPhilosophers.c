@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+// Hace que sea compatible con windows y linux 
 #ifdef _WIN32
 #include <windows.h>
 #define dormir(segundos) Sleep((segundos) * 1000)
@@ -15,15 +16,20 @@
 #define dormir(segundos) sleep(segundos)
 #endif
 
+// Duración que va a tomar el turno y estar comiendo para cada filósofo 
 #define DURACION_TURNO 3
 #define DURACION_COMIDA 1
 
+// Variables globales 
+// Tenedores son hilos que se encargan de controlar los turnos , filosofo comiendo o filosofo pensando, cuando no hya tenedores 
 pthread_mutex_t* tenedores; // tenedores
 pthread_mutex_t mutexTurno = PTHREAD_MUTEX_INITIALIZER;
 
 int cantidadFilosofos;
 int comenImpares = 1; // 1: comen impares, 0: comen pares
 
+// Función para obtener la cantidad de núcleos del sistema
+// SI no se puede obtener la cantidad de núcleos, se sume un valor de estos
 int obtenerCantidadNucleos(void) {
 #ifdef _WIN32
     SYSTEM_INFO info;
@@ -44,12 +50,14 @@ int obtenerCantidadNucleos(void) {
 #endif
 }
 
+// Hilo que alterna los turnos entre filósofos impares y pares cada DURACION_TURNO segundos
 void* alternarTurnos(void* arg) {
     (void)arg;
 
+    // mientras sea verdadero, va alternando los turnos
     while (1) {
         dormir(DURACION_TURNO);
-
+        // alterna el turno entre impares y pares
         pthread_mutex_lock(&mutexTurno);
         comenImpares = 1 - comenImpares;
         printf("Turno: %s\n", comenImpares ? "impares" : "pares");
@@ -64,6 +72,7 @@ void* cicloFilosofo(void* arg) {
     int esImpar = id % 2;
     int puedeComer;
 
+    // ciclo infinito donde el filosofo piensa o come dependiendo del turno
     while (1) {
         pthread_mutex_lock(&mutexTurno);
         puedeComer = (comenImpares == esImpar);
