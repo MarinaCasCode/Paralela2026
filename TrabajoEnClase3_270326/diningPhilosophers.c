@@ -85,6 +85,7 @@ void* cicloFilosofo(void* arg) {
         }
 
         // toma ambos tenedores para poder comer
+        // mutex lock para evitar race conditions al tomar los tenedores
         pthread_mutex_lock(&tenedores[id]); // toma el tenedor izquierdo
         pthread_mutex_lock(&tenedores[(id + 1) % cantidadFilosofos]); // toma el tenedor derecho
         printf("Filosofo %d come\n", id + 1);
@@ -102,13 +103,16 @@ int main() {
     int* identificadores;
 
     cantidadFilosofos = obtenerCantidadNucleos();
-    if (cantidadFilosofos % 2 != 0) { // asumimos que la cantidad de nucleos suele ser par
+    if (cantidadFilosofos % 2 != 0) { // se asume que la cantidad de nucleos suele ser par
         cantidadFilosofos--;
     }
+    // se asegura que haya al menos 2 filósofos para evitar condiciones de carrera
     if (cantidadFilosofos < 2) {
         cantidadFilosofos = 2;
     }
 
+
+    // se asigna memoria para los tenedores, hilos de los filósofos y sus identificadores
     tenedores = malloc(sizeof(pthread_mutex_t) * cantidadFilosofos);
     hilosFilosofos = malloc(sizeof(pthread_t) * cantidadFilosofos);
     identificadores = malloc(sizeof(int) * cantidadFilosofos);
@@ -118,7 +122,7 @@ int main() {
         pthread_mutex_init(&tenedores[i], NULL);
         identificadores[i] = i; // asigna id a cada filosofo
     }
-
+    // crea el hilo controlador que alterna los turnos entre impares y pares
     pthread_create(&hiloControlador, NULL, alternarTurnos, NULL);
 
     // crea los hilos que ejecutan el ciclo de cada filosofo
