@@ -1,1 +1,126 @@
-// The cigarette smokers problem problem was originally presented by Suhas Patil [8], who claimed that it cannot be solved with semaphores. That claim comes with some qualifications, but in any case the problem is interesting and challenging. Four threads are involved: an agent and three smokers. The smokers loop forever, first waiting for ingredients, then making and smoking cigarettes. The ingredients are tobacco, paper, and matches. We assume that the agent has an infinite supply of all three ingredients, and each smoker has an infinite supply of one of the ingredients; that is, one smoker has matches, another has paper, and the third has tobacco. The agent repeatedly chooses two different ingredients at random and makes them available to the smokers. Depending on which ingredients are chosen, the smoker with the complementary ingredient should pick up both resources and proceed. For example, if the agent puts out tobacco and paper, the smoker with the matches should pick up both ingredients, make a cigarette, and then signal the agent. To explain the premise, the agent represents an operating system that allocates resources, and the smokers represent applications that need resources. The problem is to make sure that if resources are available that would allow one more applications to proceed, those applications should be woken up. Conversely, we want to avoid waking an application if it cannot proceed. Based on this premise, there are three versions of this problem that often appear in textbooks: The impossible version: Patil’s version imposes restrictions on the solution. First, you are not allowed to modify the agent code. If the agent represents an operating system, it makes sense to assume that you don’t want to modify it every time a new application comes along. The second restriction is that you can’t use conditional statements or an array of semaphores. With these constraints, the problem cannot be solved, but as Parnas points out, the second restriction is pretty artificial [7]. With constraints like these, a lot of problems become unsolvable. The interesting version: This version keeps the first restriction—you can’t change the agent code—but it drops the others. The trivial version: In some textbooks, the problem specifies that the agent should signal the smoker that should go next, according to the ingredients that are available. This version of the problem is uninteresting because it makes the whole premise, the ingredients and the cigarettes, irrelevant. Also, as a practical matter, it is probably not a good idea to require the agent to know about the other threads and what they are waiting for. Finally, this version of the problem is just too easy.
+// Ejercicio Cigarette Smokers
+// Jimena Bejarano Sanchez C31074
+// Marina Castro Peralta C31886
+// gcc cigaretteSmokers.c -o cigaretteSmokers -lpthread
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+
+pthread_t fumadorFosforo, fumadorPapel, fumadorTabaco, agente;
+pthread_mutex_t mutex     = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condFosforo = PTHREAD_COND_INITIALIZER;
+pthread_cond_t condPapel   = PTHREAD_COND_INITIALIZER;
+pthread_cond_t condTabaco  = PTHREAD_COND_INITIALIZER;
+
+// Variables para representar los ingredientes disponibles
+int ingredienteFosforo = 0;
+int ingredientePapel   = 0;
+int ingredienteTabaco  = 0;
+
+// Función que verifica qué fumador debe ser despertado según los ingredientes disponibles
+void despertador(void) {
+    if (ingredienteFosforo && ingredientePapel) {
+        ingredienteFosforo = 0;
+        ingredientePapel   = 0;
+        printf("[Despertador] Hay fosforo y papel: avisa al fumador de tabaco\n");
+        pthread_cond_signal(&condTabaco);
+    } else if (ingredienteFosforo && ingredienteTabaco) {
+        ingredienteFosforo = 0;
+        ingredienteTabaco  = 0;
+        printf("[Despertador] Hay fosforo y tabaco: avisa al fumador de papel\n");
+        pthread_cond_signal(&condPapel);
+    } else if (ingredientePapel && ingredienteTabaco) {
+        ingredientePapel  = 0;
+        ingredienteTabaco = 0;
+        printf("[Despertador] Hay papel y tabaco: avisa al fumador de fosforo\n");
+        pthread_cond_signal(&condFosforo);
+    }
+}
+
+// Hilo del agente que coloca dos ingredientes al azar
+void* agenteFunc(void* arg) {
+    (void)arg;
+    while (1) {
+        int combo = rand() % 3;
+        pthread_mutex_lock(&mutex);
+        switch (combo) {
+            case 0:
+                ingredienteFosforo = 1;
+                ingredientePapel   = 1;
+                printf("[Agente] Pone fosforo y papel\n");
+                break;
+            case 1:
+                ingredienteFosforo = 1;
+                ingredienteTabaco  = 1;
+                printf("[Agente] Pone fosforo y tabaco\n");
+                break;
+            case 2:
+                ingredientePapel  = 1;
+                ingredienteTabaco = 1;
+                printf("[Agente] Pone papel y tabaco\n");
+                break;
+        }
+        despertador(); // Verifica qué fumador debe ser despertado
+        pthread_mutex_unlock(&mutex);
+        sleep(2);
+    }
+    return NULL;
+}
+
+// Hilo del fumador que tiene fósforo
+void* fumadorFosforoFunc(void* arg) {
+    (void)arg;
+    while (1) {
+        pthread_mutex_lock(&mutex);
+        pthread_cond_wait(&condFosforo, &mutex);
+        printf("[Fumador fosforo] Fumando...\n");
+        pthread_mutex_unlock(&mutex);
+        sleep(1);
+    }
+    return NULL;
+}
+
+// Hilo del fumador que tiene papel
+void* fumadorPapelFunc(void* arg) {
+    (void)arg;
+    while (1) {
+        pthread_mutex_lock(&mutex);
+        pthread_cond_wait(&condPapel, &mutex);
+        printf("[Fumador papel] Fumando...\n");
+        pthread_mutex_unlock(&mutex);
+        sleep(1);
+    }
+    return NULL;
+}
+
+// Hilo del fumador que tiene tabaco
+void* fumadorTabacoFunc(void* arg) {
+    (void)arg;
+    while (1) {
+        pthread_mutex_lock(&mutex);
+        pthread_cond_wait(&condTabaco, &mutex);
+        printf("[Fumador tabaco] Fumando...\n");
+        pthread_mutex_unlock(&mutex);
+        sleep(1);
+    }
+    return NULL;
+}
+
+int main(void) {
+    srand(time(NULL));
+    
+    // Crear los hilos para el agente y los fumadores
+    pthread_create(&fumadorFosforo, NULL, fumadorFosforoFunc, NULL);
+    pthread_create(&fumadorPapel,   NULL, fumadorPapelFunc,   NULL);
+    pthread_create(&fumadorTabaco,  NULL, fumadorTabacoFunc,  NULL);
+    pthread_create(&agente,         NULL, agenteFunc,         NULL);
+
+    // Esperar a que los hilos terminen
+    pthread_join(agente,         NULL);
+    pthread_join(fumadorFosforo, NULL);
+    pthread_join(fumadorPapel,   NULL);
+    pthread_join(fumadorTabaco,  NULL);
+    return 0;
+}
