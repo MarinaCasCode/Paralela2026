@@ -75,9 +75,8 @@ void* fumadorFosforoFunc(void* arg) {
     while (1) {
         pthread_mutex_lock(&mutex);
         pthread_cond_wait(&condFosforo, &mutex);
-        printf("[Fumador fosforo] Fumando...\n");
+        printf("[Fumador fosforo] Fumando...\n Despierta a agente\n");
         pthread_mutex_unlock(&mutex);
-        printf("[Fumador fosforo] Despierta a agente\n");
         sleep(1);
     }
     return NULL;
@@ -89,9 +88,8 @@ void* fumadorPapelFunc(void* arg) {
     while (1) {
         pthread_mutex_lock(&mutex);
         pthread_cond_wait(&condPapel, &mutex);
-        printf("[Fumador papel] Fumando...\n");
+        printf("[Fumador papel] Fumando...\n Despierta a agente\n");
         pthread_mutex_unlock(&mutex);
-        printf("[Fumador papel] Despierta a agente\n");
         sleep(1);
     }
     return NULL;
@@ -103,9 +101,8 @@ void* fumadorTabacoFunc(void* arg) {
     while (1) {
         pthread_mutex_lock(&mutex);
         pthread_cond_wait(&condTabaco, &mutex);
-        printf("[Fumador tabaco] Fumando...\n");
+        printf("[Fumador tabaco] Fumando...\n Despierta a agente\n");
         pthread_mutex_unlock(&mutex);
-        printf("[Fumador tabaco] Despierta a agente\n");
         sleep(1);
     }
     return NULL;
