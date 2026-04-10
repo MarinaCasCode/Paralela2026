@@ -1,5 +1,21 @@
-# Paralela2026
-JIMENA BEJARANO SÁNCHEZ C31074
-MARINA CASTRO PERALTA   C31886
+# CI-0117 — Programación Paralela y Concurrente
 
-Tareas y trabajos del curso Programación Paralela y Concurrente, primer semestre 2026 Universidad de Costa Rica
+**Universidad de Costa Rica - Primer Semestre 2026**
+
+Jimena Bejarano Sánchez  C31074  
+Marina Castro Peralta  C31886
+
+Repositorio con tareas y trabajos del curso CI-0117.
+
+---
+
+## Trabajos en clase
+
+| # | Fecha | Carpeta | Tema |
+|---|-------|---------|------|
+| 1 | 17 mar | `TrabajoEnClase1_170326` | Hello World |
+| 2 | 20 mar | `TrabajoEnClase2_200326` | Threads |
+| 3 | 27 mar | `TrabajoEnClase3_270326` | Dining Philosophers |
+| 4 | 10 abr | `TrabajoEnClase4_100426` | Cigarette Smokers |
+
+---
