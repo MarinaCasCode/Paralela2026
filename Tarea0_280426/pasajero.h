@@ -24,7 +24,7 @@ typedef struct { // tdo lo que se necesita para representar a un pasajero
 
     // resultado de check in
     int32_t counterId; // ID del counter que atendió al pasajero
-    int prioridad; // Prioridad del pasajero, calculada a partir de su clase y tiempo de espera
+    int prioridad; // Prioridad del pasajero, calculada a partir de su clase y tiempo de espera. Si lleva mucho haciendo fila el balnacer debe toamrlo y lleavrlo al frente de la cola internacional 
     int redirected; // Indica si el pasajero fue redirigido a otro counter (1 si fue redirigido, 0 si no)
 
     // crear pasajero
