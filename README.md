@@ -17,5 +17,12 @@ Repositorio con tareas y trabajos del curso CI-0117.
 | 2 | 20 mar | `TrabajoEnClase2_200326` | Threads |
 | 3 | 27 mar | `TrabajoEnClase3_270326` | Dining Philosophers |
 | 4 | 10 abr | `TrabajoEnClase4_100426` | Cigarette Smokers |
+| 5 | 17 abr | `TrabajoEnClase5_170426` | Aproximacion de pi |
+
+## Tareas
+
+| # | Fecha | Carpeta | Tema |
+|---|-------|---------|------|
+| 0 | 28 abr | `Tarea0_280426` | PThreads |
 
 ---
