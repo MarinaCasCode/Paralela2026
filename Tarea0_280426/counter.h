@@ -11,7 +11,7 @@
 typedef enum {
     COUNTER_OPEN     = 0,
     COUNTER_SERVING  = 1,
-    COUNTER_ON_BREAK = 2
+    COUNTER_ON_BREAK = 2 // se usa para que el Supervisor sepa que el counter no está atendiendo pero tampoco está cerrado, y así no se cierra por inactividad
 } EstadoCounter;
 
 typedef enum {
