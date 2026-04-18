@@ -7,7 +7,7 @@
 typedef enum {
     ECONOMY = 0,
     BUSINESS = 1,
-    FIRST_CLASS = 2
+    INTERNATIONAL = 2
 } ClasePasajero;
 
 typedef struct { // tdo lo que se necesita para representar a un pasajero
