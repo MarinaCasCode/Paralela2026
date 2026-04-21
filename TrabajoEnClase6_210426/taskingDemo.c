@@ -3,6 +3,12 @@
 // Marina Castro Peralta C31886
 // gcc taskingDemo.c -o taskingDemo -fopenmp
 
+// para correr en kabre:
+// salloc --nodes=1 --ntasks=1 --cpus-per-task=4 --time=00:30:00 --partition=batch
+// gcc taskingDemo.c -o taskingDemo -fopenmp
+// ./taskingDemo
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
