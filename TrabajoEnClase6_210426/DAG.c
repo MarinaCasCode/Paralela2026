@@ -1,0 +1,1 @@
+// Compute T1, T∞, and Tp (p=2,4,8) for the DAG below.
