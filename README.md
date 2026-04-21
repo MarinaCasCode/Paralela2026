@@ -7,6 +7,9 @@ Marina Castro Peralta  C31886
 
 Repositorio con tareas y trabajos del curso CI-0117.
 
+Profesor Josef Ruzicka González.
+Asistente Marlon Murillo
+
 ---
 
 ## Trabajos en clase
@@ -18,6 +21,7 @@ Repositorio con tareas y trabajos del curso CI-0117.
 | 3 | 27 mar | `TrabajoEnClase3_270326` | Dining Philosophers |
 | 4 | 10 abr | `TrabajoEnClase4_100426` | Cigarette Smokers |
 | 5 | 17 abr | `TrabajoEnClase5_170426` | Aproximacion de pi |
+| 6 | 21 abr | `TrabajoEnClase6_210426` | Design patterns |
 
 ## Tareas
 
