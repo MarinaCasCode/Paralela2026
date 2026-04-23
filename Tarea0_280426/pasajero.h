@@ -27,14 +27,15 @@ typedef struct { // tdo lo que se necesita para representar a un pasajero
     int prioridad; // Prioridad del pasajero, calculada a partir de su clase y tiempo de espera. Si lleva mucho haciendo fila el balnacer debe toamrlo y lleavrlo al frente de la cola internacional 
     int redirected; // Indica si el pasajero fue redirigido a otro counter (1 si fue redirigido, 0 si no)
 
-    // crear pasajero
-    Pasajero* crear_pasajero(int32_t id, ClasePasajero clase, int32_t tiempoServicio);
-    //liberar memo de pasajero
-    void destruir_pasajero(Pasajero* p);
-    // devolucion de el nombre de la clase del pasajero 
-    const char* nombre_clase(ClasePasajero clase);
-    // tiempo entre dos procesos 
-    long diferenciaMs(struct timespec inicio, struct timespec fin); // se usa para que balancer vea cuanto tiempo lleva esperando un pasajero y así pueda decidir si redirigirlo o no
 } Pasajero;
+
+// crear pasajero
+Pasajero* crear_pasajero(int32_t id, ClasePasajero clase, int32_t tiempoServicio);
+//liberar memo de pasajero
+void destruir_pasajero(Pasajero* p);
+// devolucion de el nombre de la clase del pasajero 
+const char* nombre_clase(ClasePasajero clase);
+// tiempo entre dos procesos 
+long diferenciaMs(struct timespec inicio, struct timespec fin); // se usa para que balancer vea cuanto tiempo lleva esperando un pasajero y así pueda decidir si redirigirlo o no
 
 #endif // PASAJERO_H
