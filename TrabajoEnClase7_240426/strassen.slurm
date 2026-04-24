@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --time=00:05:00
-#SBATCH --partition=normal
+#SBATCH --partition=kura
 
 g++ strassen.cpp -o strassen_seq -std=c++17
 g++ strassen.cpp -o strassen_omp -fopenmp -std=c++17
