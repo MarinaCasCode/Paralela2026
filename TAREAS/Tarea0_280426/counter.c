@@ -151,12 +151,40 @@ void* hilo_counter(void* arg) {
     pasajero->id,
     nombre_clase(pasajero->clase),
     tiempoServicioMs);  
-    }
-    return NULL; // Retorna NULL al finalizar el hilo
 
-    // verificar si debe entrar en brek 
-    // calcualr cuando termina el break , pregunta a profe 
-    // duracion del break por mientras de 500 a 2000 ms
-    // reabrir counter 
+    // verificar si debe entrar en break
+    pthread_mutex_lock(&contador->mutex); // Bloquea el mutex del counter para verificar si debe entrar en break, se hace con mutex para que si hay otro hiilo leyendo los valores al mismo tiempo, no lo haga 
+    int debeEntrarEnBreak = (contador->atendidosTurno >= contador->kActual) && (contador->estado == COUNTER_SERVING); // El counter debe entrar en break si ha atendido al menos K pasajeros en el turno actual y está sirviendo activamente
+    pthread_mutex_unlock(&contador->mutex); // Desbloquea el mutex del counter después
 
-    } // se cierra hilo de counter 
+    if (debeEntrarEnBreak) {
+        pthread_mutex_lock(&contador->mutex); // Bloquea el mutex del counter para cambiar su estado a break
+        contador->estado = COUNTER_ON_BREAK; // Cambia el estado del counter a ON_BREAK
+        int duracionBreakMs = 500 + (int)(rand_r(&contador->randSeed) % 1501); // Número aleatorio entre 500 y 2000 ms para la duracion que va a tener el break, usa el rand_r de la seed propia del hilo para que no interrumpa a los otros hilos o contadores 
+        
+        // toma de tiempo actual para calcular exactamente donde es que debe terminar
+        clock_gettime(CLOCK_MONOTONIC, &contador->tiempoFinBreak); // Registra el tiempo actual como el inicio del break
+        contador->tiempoFinBreak.tv_sec += duracionBreakMs / 1000;
+        contador->tiempoFinBreak.tv_nsec += (duracionBreakMs % 1000) * 1000000; // Suma la duración del break al tiempo de fin del break, se hace en dos partes para convertir correctamente a segundos y nanosegundos
+
+        if (contador->tiempoFinBreak.tv_nsec >= 1000000000) { // Si los nanosegundos exceden 1 segundo, ajusta el tiempo de fin del break
+            contador->tiempoFinBreak.tv_sec += contador->tiempoFinBreak.tv_nsec / 1000000000; // Suma los segundos adicionales al tiempo de fin del break
+            contador->tiempoFinBreak.tv_nsec = contador->tiempoFinBreak.tv_nsec % 1000000000; // Ajusta los nanosegundos para que queden en el rango correcto
+        } 
+
+        printf("Counter %d (%s) entrando en break por %d ms. Atendió %d pasajeros)\n",
+            contador->id, //%d
+            nombreCounter(contador->tipo), //%s
+            duracionBreakMs, //%d
+            contador->atendidosTurno); // Imprime un mensaje indicando que el counter ha entr
+        pthread_cond_wait(&contador->condReopen, &contador->mutex); // Counter duerme aqui esperando a que supervisor lo despierte, al esperar suelta el mutex para ue sup lo tome. se hace para que no haya deadlock ya que los dos neecsitan el mutex
+        // Al despertar, el counter se reabre y se elige un nuevo K para el siguiente turno
+        contador->estado = COUNTER_OPEN; // Cambia el estado del counter a OPEN al reabrir
+        contador->atendidosTurno = 0; // Reinicia el contador de atendidos en el turno al reabrir
+        contador->kActual = elegirK(contador); 
+        printf("Counter %d (%s) reabierto por Supervisor. Nuevo K para el siguiente turno: %d\n", contador->id, nombreCounter(contador->tipo), contador->kActual);
+        pthread_mutex_unlock(&contador->mutex); // Desbloquea el mutex del counter después de reabrir
+        }
+    } // fin del while de la simulacion activa
+    return NULL;
+} // se cierra hilo de counter 
