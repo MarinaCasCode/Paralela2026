@@ -46,7 +46,7 @@ typedef struct {
     long long sumaServicioMs;
 } Counter;
 
-void init_counter(Counter* c, int32_t id, TipoCounter tipo, Cola* cola,
+void initCounter(Counter* c, int32_t id, TipoCounter tipo, Cola* cola,
                   int kMin, int kMax, volatile int* activa);
 void destruirCounter(Counter* c);
 void* hilo_counter(void* arg);

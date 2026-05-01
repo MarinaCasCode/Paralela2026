@@ -137,13 +137,6 @@ void* hilo_counter(void* arg) {
     //Simulacion de tiempo de servicio 
     long tiempoServicioMs = calcularDiferenciaMs(pasajero->tiempoAtencion, pasajero->tiempoFinAtencion); // Calcula el tiempo de servicio del pasajero en milisegundos
 
-    printf("Counter %d (%s) terminó de atender al pasajero %d (%s). Tiempo de servicio: %ld ms\n",
-    contador->id,
-    nombreCounter(contador->tipo),
-    pasajero->id,
-    nombre_clase(pasajero->clase),
-    tiempoServicioMs);
-    
     // Estadisticas
     pthread_mutex_lock(&contador->mutex); // Bloquea el mutex del counter para actualizar estadísticas
     contador->totalAtendidos++; // Incrementa el total de pasajeros atendidos por el counter
@@ -158,10 +151,12 @@ void* hilo_counter(void* arg) {
     pasajero->id,
     nombre_clase(pasajero->clase),
     tiempoServicioMs);  
+    }
+    return NULL; // Retorna NULL al finalizar el hilo
 
     // verificar si debe entrar en brek 
     // calcualr cuando termina el break , pregunta a profe 
     // duracion del break por mientras de 500 a 2000 ms
     // reabrir counter 
 
-    }
+    } // se cierra hilo de counter 
