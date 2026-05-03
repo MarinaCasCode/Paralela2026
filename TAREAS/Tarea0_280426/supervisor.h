@@ -6,14 +6,16 @@
 #include "counter.h"
 
 typedef struct {
-    Counter* counters;      // arreglo de todos los counters
-    int32_t  num_counters;  // cantidad total de counters
+    Counter* contadores;      // arreglo de todos los counters
+    int32_t  numContadores;  // cantidad total de counters
     volatile int* activa;   // flag global de simulacion
 } Supervisor;
 
-void init_supervisor(Supervisor* s, Counter* counters, int32_t num_counters,
-                     volatile int* activa);
-void destruir_supervisor(Supervisor* s);
-void* hilo_supervisor(void* arg);
+void initSupervisor(Supervisor* s, Counter* contadores, int32_t numContadores, volatile int* activa);
+
+void destruirSupervisor(Supervisor* s);
+
+// Recorre counters buscando los que esten en break, compara el tiempo actual con tiempofinbreak y si ya paso manda cond signal para despewrtar al counter, se duerme 50ms antes de volber a revisar para evitar busy waiting
+void* hiloSupervisor(void* arg);
 
 #endif // SUPERVISOR_H
