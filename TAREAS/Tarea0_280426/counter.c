@@ -8,12 +8,7 @@
 #include <time.h> // para clock_gettime y nanosleep
 
 
-// funciones internas 
-static long calcularDiferenciaMs(struct timespec inicio, struct timespec fin) {
-    long segundos = fin.tv_sec - inicio.tv_sec; // Calcula la diferencia en segundos
-    long nanosegundos = fin.tv_nsec - inicio.tv_nsec; // Calcula la diferencia en nanosegundos para obtener una mayor precisión
-    return segundos * 1000 + nanosegundos / 1000000; // Convierte la diferencia total a milisegundos y la devuelve
-}
+// funciones internas
 
 // elector de k aleatorio en el turno actual dle counter
 static int elegirK(Counter* contador) {
@@ -124,18 +119,18 @@ void* hilo_counter(void* arg) {
     usleep((useconds_t)(pasajero->tiempoServicio * 1000)); 
     clock_gettime(CLOCK_MONOTONIC, &pasajero->tiempoFinAtencion); // Registra el tiempo de fin de servicio al pasajero
 
-    long tiempoEsperaMs = calcularDiferenciaMs(pasajero->tiempoLlegada, pasajero->tiempoAtencion); // Calcula el tiempo de espera del pasajero en milisegundos
+    long tiempoEsperaMs = diferenciaMs(pasajero->tiempoLlegada, pasajero->tiempoAtencion); // Calcula el tiempo de espera del pasajero en milisegundos
 
     printf("Counter %d (%s) atendiendo pasajero %d (%s) | Espera: %ld ms %s\n",
     contador->id,
     nombreCounter(contador->tipo),
     pasajero->id,
-    nombre_clase(pasajero->clase),
+    nombreClase(pasajero->clase),
     tiempoEsperaMs,
     pasajero->redirected ? "| Redirigido" : ""); // Indica si el pasajero fue redirigido o no
     
     //Simulacion de tiempo de servicio 
-    long tiempoServicioMs = calcularDiferenciaMs(pasajero->tiempoAtencion, pasajero->tiempoFinAtencion); // Calcula el tiempo de servicio del pasajero en milisegundos
+    long tiempoServicioMs = diferenciaMs(pasajero->tiempoAtencion, pasajero->tiempoFinAtencion); // Calcula el tiempo de servicio del pasajero en milisegundos
 
     // Estadisticas
     pthread_mutex_lock(&contador->mutex); // Bloquea el mutex del counter para actualizar estadísticas
@@ -149,7 +144,7 @@ void* hilo_counter(void* arg) {
     contador->id,
     nombreCounter(contador->tipo),
     pasajero->id,
-    nombre_clase(pasajero->clase),
+    nombreClase(pasajero->clase),
     tiempoServicioMs);  
 
     // verificar si debe entrar en break
@@ -187,4 +182,4 @@ void* hilo_counter(void* arg) {
         }
     } // fin del while de la simulacion activa
     return NULL;
-} // se cierra hilo de counter 
+}

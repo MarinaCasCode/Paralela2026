@@ -25,7 +25,7 @@ int main() {
 
     // 4. Meter pasajeros de prueba
     for (int i = 0; i < 20; i++) {
-        Pasajero* p = crear_pasajero(i, ECONOMY, 0);
+        Pasajero* p = crearPasajero(i, ECONOMY, 0);
         encolar(&colaEconomy, p);
     }
 

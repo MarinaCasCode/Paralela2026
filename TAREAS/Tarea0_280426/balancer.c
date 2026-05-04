@@ -74,7 +74,7 @@ static void revisarPriorityBump(Balancer* b) {
 
     while (actual != NULL) {
         Pasajero* pasajero = (Pasajero*)actual->data; // Obtiene pasajero del nodo 
-        long espera = calcularDiferenciaMs(pasajero->tiempoLlegada, ahora); // Calcula el tiempo de espera del pasajero business desde que lleggó hasta ahora 
+        long espera = diferenciaMs(pasajero->tiempoLlegada, ahora); // Calcula el tiempo de espera del pasajero business desde que lleggó hasta ahora 
 
         if (espera >= b->tMaxEspera) { // Si tiempo de espera que lelva es mayor que el límite se hace priority bump
             printf("Balancer: Pasajero %d en Business ha estado esperando %ld ms, superando el límite de %d ms. Haciendo priority bump a International.\n", pasajero->id, espera, b->tMaxEspera);
