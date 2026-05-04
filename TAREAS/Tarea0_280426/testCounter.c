@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "counter.h"
 #include "pasajero.h"
 #include "queue.h"
-#include <unistd.h> // para sleep
-// compilar con gcc -o testCounter testCounter.c counter.c pasajero.c queue.c -lpthread
+#include "supervisor.h"
+
+// compilar con gcc counter.c pasajero.c queue.c supervisor.c testCounter.c -o testCounter -lpthread
 
 int main() {
     volatile int activa = 1;
@@ -17,38 +19,34 @@ int main() {
     Counter contador;
     initCounter(&contador, 1, TIPO_ECONOMY, &colaEconomy, 2, 4, &activa);
 
-    // 3. Meter algunos pasajeros de prueba
-    for (int i = 0; i < 5; i++) {
+    // 3. Crear el supervisor con el arreglo de counters
+    Supervisor supervisor;
+    initSupervisor(&supervisor, &contador, 1, &activa);
+
+    // 4. Meter pasajeros de prueba
+    for (int i = 0; i < 20; i++) {
         Pasajero* p = crear_pasajero(i, ECONOMY, 0);
         encolar(&colaEconomy, p);
     }
 
-   // 4. Lanzar el hilo del counter
-pthread_t hilo;
-pthread_create(&hilo, NULL, hilo_counter, &contador);
+    // 5. Lanzar hilo del counter y del supervisor
+    pthread_t hiloCounter, hiloSup;
+    pthread_create(&hiloCounter, NULL, hilo_counter, &contador);
+    pthread_create(&hiloSup,     NULL, hiloSupervisor, &supervisor);
 
-// 5. Simular el Supervisor manualmente
-sleep(1);
+    // 6. Esperar a que terminen todos los pasajeros y apagar
+    sleep(15);
+    activa = 0;
+    pthread_cond_broadcast(&colaEconomy.cond);
 
-// Señalar condReopen si el counter está en break
-pthread_mutex_lock(&contador.mutex);
-if (contador.estado == COUNTER_ON_BREAK) {
-    printf("[TEST] Supervisor simulado: reabriendo counter %d\n", contador.id);
-    pthread_cond_signal(&contador.condReopen);
-}
-pthread_mutex_unlock(&contador.mutex);
+    pthread_join(hiloCounter, NULL);
+    pthread_join(hiloSup,     NULL);
 
-// Esperar un poco más y apagar
-sleep(2);
-activa = 0;
-pthread_cond_broadcast(&colaEconomy.cond); // despertar el hilo para que vea activa=0
+    // 7. Limpiar
+    destruirSupervisor(&supervisor);
+    destruirCounter(&contador);
+    destruirCola(&colaEconomy);
 
-pthread_join(hilo, NULL);
-
-// 6. Limpiar
-destruirCounter(&contador);
-destruirCola(&colaEconomy);
-
-printf("\nPrueba terminada. Atendidos: %lld\n", (long long)contador.totalAtendidos);
-return 0;
+    printf("\nPrueba terminada. Atendidos: %lld\n", (long long)contador.totalAtendidos);
+    return 0;
 }

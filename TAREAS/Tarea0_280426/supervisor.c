@@ -44,10 +44,28 @@ while (*(supervisor->activa)) {
         pthread_mutex_lock(&contador->mutex); // Bloquea el mutex del counter para revisar su estado y tiempo de fin de break
 
         if (contador -> estado == COUNTER_ON_BREAK) {
+            // si contador esta en break, ver si ya paso el fin del break
+            struct timespec ahora;
+            clock_gettime(CLOCK_MONOTONIC, &ahora); // obtiene el tiempo actual para comparar con el tiempo de fin de break del counter
             
+            // break terminado si el tiempo actual es mayor o igual al tiempo de fin de break del counter 
+            if ((ahora.tv_sec > contador->tiempoFinBreak.tv_sec) ||
+            (ahora.tv_sec == contador->tiempoFinBreak.tv_sec && 
+            ahora.tv_nsec >= contador->tiempoFinBreak.tv_nsec)) {
+                // el break ya terminó, se puede reabrir el counter
+                printf("Supervisor: Counter %d en break terminó su descanso. Reabriendo...\n", contador->id);
+                pthread_cond_signal(&contador->condReopen); // Señala al counter para que se despierte y reabra
+                contador->estado = COUNTER_OPEN; 
+            }
         }
+        pthread_mutex_unlock(&contador->mutex); // Desbloquea el mutex del counter después de revisar su estado y tiempo de fin de break
     }
-
+    // Pausa o duerme poco antes de volver a revisar para no estar consumiendo cpu
+    // cada 50ms, suficiente para que no haya busy waiting
+    struct timespec espera = {0, 50*1000000}; // 50 ms en nanosegundos
+    nanosleep(&espera, NULL); // Duerme por el tiempo especificado antes
 }
+printf("Hilo supervisor termiando, simulación inactiva.\n");
+return NULL; // Retorna NULL al finalizar el hilo
 
-}
+} // se cierra hilo de supervisor
