@@ -2,7 +2,7 @@
 #include <stdlib.h> // para malloc y free
 #include <assert.h> // para assert que detiene el programa si se trata de hacer algo "imposible" como destruir un pasajero nulo
 
-Pasajero* crear_pasajero(int32_t id, ClasePasajero clase, int32_t tiempoServicio) {
+Pasajero* crearPasajero(int32_t id, ClasePasajero clase, int32_t tiempoServicio) {
     Pasajero* p = (Pasajero*)malloc(sizeof(Pasajero)); // Crea un nuevo pasajero pidiendo su tamaño en cantidad de memoria
     p->id = id; // Asigna el ID al pasajero
     p->clase = clase; // Asigna la clase al pasajero
@@ -19,12 +19,12 @@ Pasajero* crear_pasajero(int32_t id, ClasePasajero clase, int32_t tiempoServicio
     return p; // Devuelve el nuevo pasajero creado
 }
 
-void destruir_pasajero(Pasajero* p) {
+void destruirPasajero(Pasajero* p) {
     assert(p != NULL); // Asegura que el pasajero no sea nulo
     free(p); // Libera la memoria asignada al pasajero
 }
 
-const char* nombre_clase(ClasePasajero clase) {
+const char* nombreClase(ClasePasajero clase) {
     switch (clase) { // Devuelve el nombre de la clase del pasajero según su valor
         case ECONOMY:
             return "Economy";

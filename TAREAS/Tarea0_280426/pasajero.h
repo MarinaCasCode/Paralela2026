@@ -30,11 +30,11 @@ typedef struct { // tdo lo que se necesita para representar a un pasajero
 } Pasajero;
 
 // crear pasajero
-Pasajero* crear_pasajero(int32_t id, ClasePasajero clase, int32_t tiempoServicio);
+Pasajero* crearPasajero(int32_t id, ClasePasajero clase, int32_t tiempoServicio);
 //liberar memo de pasajero
-void destruir_pasajero(Pasajero* p);
+void destruirPasajero(Pasajero* p);
 // devolucion de el nombre de la clase del pasajero 
-const char* nombre_clase(ClasePasajero clase);
+const char* nombreClase(ClasePasajero clase);
 // tiempo entre dos procesos 
 long diferenciaMs(struct timespec inicio, struct timespec fin); // se usa para que balancer vea cuanto tiempo lleva esperando un pasajero y así pueda decidir si redirigirlo o no
 
