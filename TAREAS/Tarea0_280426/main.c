@@ -121,6 +121,9 @@ int main(int argc, char* argv[]) {
     printf("=== SIMULACION CHECK-IN AEROPUERTO ===\n");
     printf("Pasajeros=%d | Counters: Eco=%d Biz=%d Intl=%d | K=[%d,%d] | TMax=%d ms | Q=%d\n\n",
            totalPasajeros, numEco, numBiz, numIntl, kMin, kMax, tMax, umbralQ);
+
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    fflush(stdout);
  
     // Semilla global para la generación de clases (solo se usa en el main, no en hilos)
     srand((unsigned int)time(NULL));
@@ -139,7 +142,6 @@ int main(int argc, char* argv[]) {
     // Flag simulación: mientras sea 1, sigue corriendo
     // Se declara volatile para que el comp no optimice el proceso 
     volatile int activa = 1;
-    pthread_mutex_t mutexActiva = PTHREAD_MUTEX_INITIALIZER;
  
     int indice = 0;
     for (int i = 0; i < numEco;  i++, indice++)
@@ -199,8 +201,10 @@ int main(int argc, char* argv[]) {
     // "Apagar simulación" y despertar a los hilos 
     clock_gettime(CLOCK_MONOTONIC, &tiempoFin);
  
-    // ── 10. Apagar la simulacion y despertar todos los hilos ───────────────
+    // Poner activa en 0 para que los hilos vean que la simulación terminó, con mutex para sincronización   
+    pthread_mutex_lock(&mutexActiva);
     activa = 0;
+    pthread_mutex_unlock(&mutexActiva);
     despertarTodos(&colaEco, &colaBiz, &colaIntl, contadores, numContadores);
 
     // Esperar a que hilos terminen
