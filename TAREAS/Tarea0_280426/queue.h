@@ -23,6 +23,7 @@ typedef struct Cola {
 void initCola(Cola* cola); // Inicializa la cola
 void destruirCola(Cola* cola); // Destruye la cola y libera 
 void encolar(Cola* cola, void* data); // Agrega un elemento a la cola
+void encolarAlFrente(Cola* cola, void* data); // Inserta un elemento al frente
 void* desencolar(Cola* cola); // Elimina y devuelve el elemento al frente de la cola, bloquea si la cola está vacía
 size_t tamCola(Cola* cola); // Devuelve el tamaño actual de la cola
 

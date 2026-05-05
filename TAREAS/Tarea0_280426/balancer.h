@@ -24,7 +24,4 @@ void destruirBalancer(Balancer* b);
 // funcion main del hilo balancer 
 void* hiloBalancer(void* arg);
 
-// para insertar pasajero al frente de la cola (prority bump)
-void priorityBump(Cola* cola, void* data);
-
 #endif // BALANCER_H
