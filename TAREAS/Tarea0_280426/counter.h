@@ -37,6 +37,7 @@ typedef struct {
 
     Cola* cola;           // cola de la que este counter consume
     volatile int* activa; // puntero al flag global de simulacion
+    pthread_mutex_t* mutexActiva;  // mutex que protege activa
 
     struct timespec tiempoFinBreak; // cuando termina el break (para el Supervisor)
 
@@ -49,6 +50,6 @@ typedef struct {
 void initCounter(Counter* c, int32_t id, TipoCounter tipo, Cola* cola,
                   int kMin, int kMax, volatile int* activa);
 void destruirCounter(Counter* c);
-void* hilo_counter(void* arg);
+void* hiloCounter(void* arg);
 
 #endif // COUNTER_H

@@ -9,6 +9,12 @@
 #include "queue.h"
 #include "balancer.h"
 #include "supervisor.h"
+// compilar con: gcc -o simulacion main.c counter.c pasajero.c queue.c balancer.c supervisor.c -lpthread
+// compilar en kabré con: gcc -g -std=c99 -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=600 -o simulacion main.c counter.c pasajero.c queue.c balancer.c supervisor.c -lpthread
+// valgrind: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./simulacion 100 2 1 1 3 6 500 20
+
+// Mutex global que protege la variable activa
+pthread_mutex_t mutexActiva = PTHREAD_MUTEX_INITIALIZER; 
 
 // FUnción para mostrar el uso del proggrama
 static void verUso(const char* nombrePrograma) {
@@ -90,7 +96,7 @@ int main(int argc, char* argv[]) {
     // Lectura y validación de args en la línea de commands
     // No hay valores hardcodeados, todo viene del usuario 
     if (argc != 9) {
-        mostrarUso(argv[0]);
+        verUso(argv[0]);
         return 1;
     }
  
@@ -107,7 +113,7 @@ int main(int argc, char* argv[]) {
     if (totalPasajeros <= 0 || numEco <= 0 || numBiz <= 0 || numIntl <= 0 ||
         kMin <= 0 || kMax < kMin || tMax <= 0 || umbralQ <= 0) {
         printf("Error: todos los parametros deben ser positivos y kMax >= kMin.\n");
-        mostrarUso(argv[0]);
+        verUso(argv[0]);
         return 1;
     }
  
@@ -132,6 +138,7 @@ int main(int argc, char* argv[]) {
     // Flag simulación: mientras sea 1, sigue corriendo
     // Se declara volatile para que el comp no optimice el proceso 
     volatile int activa = 1;
+    pthread_mutex_t mutexActiva = PTHREAD_MUTEX_INITIALIZER;
  
     int indice = 0;
     for (int i = 0; i < numEco;  i++, indice++)
@@ -173,7 +180,7 @@ int main(int argc, char* argv[]) {
     assert(hilosCounter != NULL);
  
     for (int i = 0; i < numContadores; i++)
-        pthread_create(&hilosCounter[i], NULL, hilo_counter, &contadores[i]);
+        pthread_create(&hilosCounter[i], NULL, hiloCounter, &contadores[i]);
  
     pthread_t hiloSup, hiloBal;
     pthread_create(&hiloSup, NULL, hiloSupervisor, &supervisor);
@@ -270,5 +277,7 @@ int main(int argc, char* argv[]) {
     destruirCola(&colaBiz);
     destruirCola(&colaIntl);
  
+    pthread_mutex_destroy(&mutexActiva);
+
     return 0;
 }

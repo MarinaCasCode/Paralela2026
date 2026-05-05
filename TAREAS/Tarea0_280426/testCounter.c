@@ -31,7 +31,7 @@ int main() {
 
     // 5. Lanzar hilo del counter y del supervisor
     pthread_t hiloCounter, hiloSup;
-    pthread_create(&hiloCounter, NULL, hilo_counter, &contador);
+    pthread_create(&hiloCounter, NULL, hiloCounter, &contador);
     pthread_create(&hiloSup,     NULL, hiloSupervisor, &supervisor);
 
     // 6. Esperar a que terminen todos los pasajeros y apagar

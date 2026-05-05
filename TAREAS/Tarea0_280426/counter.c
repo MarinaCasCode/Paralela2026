@@ -7,9 +7,9 @@
 #include <unistd.h> // para sleep
 #include <time.h> // para clock_gettime y nanosleep
 
+extern pthread_mutex_t mutexActiva; // Declaración del mutex global que protege la variable activa
 
 // funciones internas
-
 // elector de k aleatorio en el turno actual dle counter
 static int elegirK(Counter* contador) {
     int rango = contador ->kMax - contador->kMin + 1; // Calcula el rango de valores posibles para K
@@ -47,7 +47,7 @@ void initCounter(Counter* contador, int32_t id, TipoCounter tipo, Cola* cola, in
     contador->atendidosTurno = 0; // Inicializa el contador de atendidos
     contador->totalAtendidos = 0; // Inicializa el total de atendidos a 0
     contador->sumaEsperaMs = 0; // Inicializa la suma de tiempos de espera a 0
-    contador->sumaServicioMs = 0; // Inicializa la suma de tiempos de
+    contador->sumaServicioMs = 0; // Inicializa la suma de tiempos de servicio a 0
 
     // valor inicial (semilla) única por hilo
     contador->randSeed = (unsigned int)(time(NULL)) ^ (unsigned int)(id * 2654435761u);
@@ -64,27 +64,40 @@ void initCounter(Counter* contador, int32_t id, TipoCounter tipo, Cola* cola, in
 void destruirCounter(Counter* c) {
     assert(c != NULL);
     pthread_mutex_destroy(&c->mutex);
-    pthread_cond_destroy(&c->condReopen);
+    pthread_cond_destroy(&c->condReopen); // Destruye el mutex y la variable de condición del counter
 }
 
 // hilo del counter 
-void* hilo_counter(void* arg) {
+void* hiloCounter(void* arg) {
     Counter* contador = (Counter*)arg;
     assert(contador != NULL);
 
-    while(*(contador->activa)) {
+    pthread_mutex_lock(&mutexActiva);
+    int simActiva = *(contador->activa);
+    pthread_mutex_unlock(&mutexActiva);
 
-    pthread_mutex_lock(&contador->cola->mutex);
+    while(simActiva) {
+        // Esperar a que haya un pasajero en la cola asignada al counter
+        pthread_mutex_lock(&contador->cola->mutex);
 
-    while (contador->cola->tam == 0 && *(contador->activa)) {
-        pthread_cond_wait(&contador->cola->cond, &contador->cola->mutex);
-    }
+        // Si la cola está vacía, esperar a que llegue un nuevo pasajero o a que termine la simulación
+        pthread_mutex_lock(&mutexActiva);
+        simActiva = *(contador->activa);
+        pthread_mutex_unlock(&mutexActiva);
 
-    if (contador->cola->tam == 0 && !*(contador->activa)) {
-        pthread_mutex_unlock(&contador->cola->mutex);
-        break;
-    }
+        while (contador->cola->tam == 0 && simActiva) {
+            pthread_cond_wait(&contador->cola->cond, &contador->cola->mutex);
+            pthread_mutex_lock(&mutexActiva);
+            simActiva = *(contador->activa);
+            pthread_mutex_unlock(&mutexActiva);
+        }
 
+        if (contador->cola->tam == 0 && !simActiva) {
+            pthread_mutex_unlock(&contador->cola->mutex);
+            break;
+        }
+
+    // Desencolar al pasajero del frente de la cola para atenderlo
     Nodo* nodoFrente = contador->cola->cabeza;
     Pasajero* pasajero = (Pasajero*)nodoFrente->data;
     
@@ -96,7 +109,8 @@ void* hilo_counter(void* arg) {
     contador->cola->tam--;
 
     pthread_mutex_unlock(&contador->cola->mutex);
-
+    
+    // Registrar timepo de atencion y counter que lo atiende
     struct timespec tiempoAtencion;
     clock_gettime(CLOCK_MONOTONIC, &tiempoAtencion);
     pasajero->tiempoAtencion = tiempoAtencion;
@@ -106,20 +120,21 @@ void* hilo_counter(void* arg) {
     contador->estado = COUNTER_SERVING;
     pthread_mutex_unlock(&contador->mutex);
 
+    // Simular tiempo de servicio
     usleep((useconds_t)(pasajero->tiempoServicio * 1000)); 
     clock_gettime(CLOCK_MONOTONIC, &pasajero->tiempoFinAtencion);
 
     long tiempoEsperaMs = diferenciaMs(pasajero->tiempoLlegada, pasajero->tiempoAtencion);
+    long tiempoServicioMs = diferenciaMs(pasajero->tiempoAtencion, pasajero->tiempoFinAtencion);
 
     printf("Counter %d (%s) atendiendo pasajero %d (%s) | Espera: %ld ms %s\n",
-    contador->id,
-    nombreCounter(contador->tipo),
-    pasajero->id,
-    nombreClase(pasajero->clase),
-    tiempoEsperaMs,
-    pasajero->redirected ? "| Redirigido" : "");
+        contador->id,
+        nombreCounter(contador->tipo),
+        pasajero->id,
+        nombreClase(pasajero->clase),
+        tiempoEsperaMs,
+        pasajero->redirected ? "| Redirigido" : "");
     
-    long tiempoServicioMs = diferenciaMs(pasajero->tiempoAtencion, pasajero->tiempoFinAtencion);
 
     pthread_mutex_lock(&contador->mutex);
     contador->totalAtendidos++;
@@ -129,11 +144,11 @@ void* hilo_counter(void* arg) {
     pthread_mutex_unlock(&contador->mutex);
 
     printf("Counter %d (%s) terminó de atender al pasajero %d (%s). Tiempo de servicio: %ld ms\n",
-    contador->id,
-    nombreCounter(contador->tipo),
-    pasajero->id,
-    nombreClase(pasajero->clase),
-    tiempoServicioMs);  
+        contador->id,
+        nombreCounter(contador->tipo),
+        pasajero->id,
+        nombreClase(pasajero->clase),
+        tiempoServicioMs);  
 
     // verificar si debe entrar en break
     pthread_mutex_lock(&contador->mutex);
@@ -148,35 +163,49 @@ void* hilo_counter(void* arg) {
         clock_gettime(CLOCK_MONOTONIC, &contador->tiempoFinBreak);
         contador->tiempoFinBreak.tv_sec += duracionBreakMs / 1000;
         contador->tiempoFinBreak.tv_nsec += (duracionBreakMs % 1000) * 1000000;
-
         if (contador->tiempoFinBreak.tv_nsec >= 1000000000) {
             contador->tiempoFinBreak.tv_sec += contador->tiempoFinBreak.tv_nsec / 1000000000;
             contador->tiempoFinBreak.tv_nsec = contador->tiempoFinBreak.tv_nsec % 1000000000;
-        } 
+        }
 
-        printf("Counter %d (%s) entrando en break por %d ms. Atendió %d pasajeros)\n",
+         printf("Counter %d (%s) entrando en break por %d ms. Atendió %d pasajeros)\n",
             contador->id,
             nombreCounter(contador->tipo),
             duracionBreakMs,
             contador->atendidosTurno);
 
-        // Esperar a que el Supervisor reabra el counter.
-        while (contador->estado == COUNTER_ON_BREAK && *(contador->activa)) {
+        // Esperar a que supervisor reabra el counter 
+        pthread_mutex_lock(&mutexActiva);
+        simActiva = *(contador->activa);
+        pthread_mutex_unlock(&mutexActiva);
+
+       
+        while (contador->estado == COUNTER_ON_BREAK && simActiva) {
             pthread_cond_wait(&contador->condReopen, &contador->mutex);
+            // refrescar simActiva cada vez que se despierte para evitar quedarse esperando si la simulacion ya terminó
+            pthread_mutex_lock(&mutexActiva);
+            simActiva = *(contador->activa);
+            pthread_mutex_unlock(&mutexActiva);
         }
 
         // Si salimos del while porque la simulacion termino, soltamos el mutex
         // y salimos del bucle principal del counter sin reabrir.
-        if (!*(contador->activa)) {
+        if (!simActiva) {            
             pthread_mutex_unlock(&contador->mutex);
             break;
         }
-
+        
         contador->atendidosTurno = 0;
         contador->kActual = elegirK(contador); 
         printf("Counter %d (%s) reabierto por Supervisor. Nuevo K para el siguiente turno: %d\n", contador->id, nombreCounter(contador->tipo), contador->kActual);
         pthread_mutex_unlock(&contador->mutex);
     }
+    // fin del while de la simulacion activa
+    // refrescar simActiva al final de cada iteracion
+    pthread_mutex_lock(&mutexActiva);
+    simActiva = *(contador->activa);
+    pthread_mutex_unlock(&mutexActiva);
+
     } // fin del while de la simulacion activa
     return NULL;
 } 

@@ -9,6 +9,8 @@ typedef struct {
     Counter* contadores;      // arreglo de todos los counters
     int32_t  numContadores;  // cantidad total de counters
     volatile int* activa;   // flag global de simulacion
+    pthread_mutex_t* mutexActiva;  // mutex que protege activa
+
 } Supervisor;
 
 void initSupervisor(Supervisor* s, Counter* contadores, int32_t numContadores, volatile int* activa);

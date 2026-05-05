@@ -14,6 +14,7 @@ typedef struct {
     int32_t maxEnCola; // si una cola sobrepasa este valor, se pasa a internacional 
     int32_t tMaxEspera; // tiempo maximo de espera de un pasajero en businnes antes que suceda un priority bump
     volatile int* activa; // flag global de simulacion
+    pthread_mutex_t* mutexActiva;  // mutex que protege activa
 
     // Anti-starvation: cuota de priority bumps por ventana de tiempo
     int32_t bumpsEnVentana;             // bumps hechos en la ventana actual

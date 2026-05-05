@@ -5,6 +5,8 @@
 #include <time.h> // para clock_gettime y nanosleep
 #include <stdlib.h> // para malloc y free
 
+extern pthread_mutex_t mutexActiva; 
+
 //Init, inicializa balancer 
 void initBalancer(Balancer* b, Cola* colaEconomy, Cola* colaBusiness, Cola* colaInternacional, int32_t maxEnCola, int32_t tMaxEspera, volatile int* activa){
     assert(b != NULL); 
@@ -183,7 +185,10 @@ void* hiloBalancer(void* arg) {
 
     printf("Hilo balancer iniciado. Intervalo de revision: %ld ms.\n", INTERVALO_BALANCER_MS);
 
-    while (*(balancer->activa)) {
+    pthread_mutex_lock(&mutexActiva);
+    int simActiva = *(balancer->activa);
+    pthread_mutex_unlock(&mutexActiva);
+    while (simActiva) {
         // 1. Priority bump: business que han esperado mas que tMaxEspera -> frente de Internacional.
         revisarPriorityBump(balancer);
 
@@ -193,6 +198,10 @@ void* hiloBalancer(void* arg) {
                          balancer->maxEnCola, "Economy");
         redistribuirCola(balancer->colaBusiness, balancer->colaInternacional,
                          balancer->maxEnCola, "Business");
+
+    pthread_mutex_lock(&mutexActiva);
+        simActiva = *(balancer->activa);
+        pthread_mutex_unlock(&mutexActiva);
 
         // Pausa antes de la siguiente revision para no consumir CPU innecesariamente.
         struct timespec espera;

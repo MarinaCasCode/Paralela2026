@@ -5,6 +5,8 @@
 #include <assert.h> // para assert que detiene el programa si se trata de hacer algo "imposible" como destruir un supervisor nulo
 #include <stdlib.h> // para malloc y free
 
+extern pthread_mutex_t mutexActiva; 
+
 // initSupervisor 
 
 void initSupervisor(Supervisor* s, Counter* contadores, int32_t numContadores, volatile int* activa) {
@@ -36,7 +38,10 @@ assert(supervisor != NULL);
 
 // Mientras la simulacion esté activa
 // Supervisor chequea si hay algun counter en break y si ya pasó el tiempo del break para reabrirlo 
-while (*(supervisor->activa)) {
+pthread_mutex_lock(&mutexActiva);
+int simActiva = *(supervisor->activa);
+pthread_mutex_unlock(&mutexActiva);
+while (simActiva) {
 
     // Recorrido por todos los counters para revisar estado 
     for (int32_t i= 0; i < supervisor->numContadores; i++) {
@@ -62,9 +67,13 @@ while (*(supervisor->activa)) {
     }
     // Pausa o duerme poco antes de volver a revisar para no estar consumiendo cpu
     // cada 50ms, suficiente para que no haya busy waiting
-    struct timespec espera = {0, 50*1000000}; // 50 ms en nanosegundos
-    nanosleep(&espera, NULL); // Duerme por el tiempo especificado antes
-}
+    struct timespec espera = {0, 50*1000000};
+    nanosleep(&espera, NULL); // Duerme por 50 ms
+    pthread_mutex_lock(&mutexActiva); // Bloquea el mutex para revisar el flag de simulacion antes de la siguiente iteracion del while
+    simActiva = *(supervisor->activa); // Actualiza el valor de simActiva para la condicion del while
+    pthread_mutex_unlock(&mutexActiva); // Desbloquea el mutex después de revisar el flag de simulacion
+    }
+    
 printf("Hilo supervisor termiando, simulación inactiva.\n");
 return NULL; // Retorna NULL al finalizar el hilo
 
