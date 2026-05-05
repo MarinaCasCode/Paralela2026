@@ -20,6 +20,10 @@ void initBalancer(Balancer* b, Cola* colaEconomy, Cola* colaBusiness, Cola* cola
     b->tMaxEspera = tMaxEspera;
     b->activa = activa; 
 
+    // Anti-starvation: arranca con 0 bumps y la ventana inicia AHORA.
+    b->bumpsEnVentana = 0;
+    clock_gettime(CLOCK_MONOTONIC, &b->inicioVentana);
+
     printf("Balancer inicializado, máxima cantidad de pasajeros que va a permitir en la cola: %d, tiempo límite de espera para clase Business: %d ms\n", maxEnCola, tMaxEspera);   
 }
 
@@ -40,9 +44,27 @@ void destruirBalancer(Balancer* b) {
 // Si alguna cola supera umbral de cantidad de pasajeros, es pasado a internacional
 // Se hace cola por cola para evitar hacer priority bumps, porque si se hacen todos al mismo tiempo puede que haya una cola en la que ya no se ocupaba hacer por el movimiento que hicimos con una 
 // Mutex para revisar colas y hacer priority bumps son 100% necesarios o si no ocurriría un deadlock, porque el hilo del balancer necesita revisar el tamaño de las colas para decidir si hace priority bump, y el hilo de los counters también necesita revisar el tamaño de las colas para saber si debe esperar o no
+//
+// Anti-starvation: maximo MAX_BUMPS_POR_VENTANA bumps por ventana de VENTANA_MS.
 static void revisarPriorityBump(Balancer* b) {
+    // Limites de la cuota anti-starvation.
+    const int32_t MAX_BUMPS_POR_VENTANA = 3;
+    const long    VENTANA_MS            = 1000;
+
     struct timespec ahora;
     clock_gettime(CLOCK_MONOTONIC, &ahora); // obtiene el tiempo actual para comparar con el tiempo de atención de los pasajeros en business y hacer priority bump si es necesario
+
+    // Reset de ventana si ya paso VENTANA_MS desde su inicio.
+    long msDesdeInicio = diferenciaMs(b->inicioVentana, ahora);
+    if (msDesdeInicio >= VENTANA_MS) {
+        b->bumpsEnVentana = 0;
+        b->inicioVentana = ahora;
+    }
+
+    // Si ya se alcanzo el cap en esta ventana, no se hacen mas bumps por ahora.
+    if (b->bumpsEnVentana >= MAX_BUMPS_POR_VENTANA) {
+        return;
+    }
 
     pthread_mutex_lock(&b->colaBusiness->mutex); // Bloquea mutex de la cola de business para revisar su tamaño y tiempos de espera de sus pasajeros
     Nodo* anterior = NULL; 
@@ -79,6 +101,10 @@ static void revisarPriorityBump(Balancer* b) {
             // Función privada ya que solo balancer la puede usar 
             encolarAlFrente(b->colaInternacional, data); // Inserta al pasajero al frente de la cola internacional para que sea atendido lo más pronto posible
             printf("Balancer: PRIORITY BUMP: Pasajero %d movido al frente de cola Internacional, por llevar esperando %ld ms. \n", pasajero->id, espera);
+
+            // Contabilizar el bump para la cuota anti-starvation.
+            b->bumpsEnVentana++;
+
             return; // Se hace un priority bump a la vez para evitar starvation
         }
         anterior = actual; // Avanza el nodo anterior al actual

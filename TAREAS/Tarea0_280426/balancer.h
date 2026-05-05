@@ -4,6 +4,7 @@
 #include "queue.h"
 #include <pthread.h>
 #include <stdint.h>
+#include <time.h>
 
 typedef struct {
     Cola* colaEconomy;
@@ -13,6 +14,10 @@ typedef struct {
     int32_t maxEnCola; // si una cola sobrepasa este valor, se pasa a internacional 
     int32_t tMaxEspera; // tiempo maximo de espera de un pasajero en businnes antes que suceda un priority bump
     volatile int* activa; // flag global de simulacion
+
+    // Anti-starvation: cuota de priority bumps por ventana de tiempo
+    int32_t bumpsEnVentana;             // bumps hechos en la ventana actual
+    struct timespec inicioVentana;      // momento en que comenzo la ventana actual
 } Balancer;
 
 // incializar balancer con colas y tiempos 
