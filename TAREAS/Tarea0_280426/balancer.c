@@ -92,5 +92,23 @@ void* hiloBalancer(void* arg) {
     Balancer* balancer = (Balancer*)arg; // Convierte argumento a un puntero a Balancer
     assert(balancer != NULL); // Asegura que el balancer no sea nulo
 
-}
+    // Intervalo de polling del balancer en milisegundos.
+    const long INTERVALO_BALANCER_MS = 50;
+
+    printf("Hilo balancer iniciado. Intervalo de revision: %ld ms.\n", INTERVALO_BALANCER_MS);
+
+    while (*(balancer->activa)) {
+        // Revisa la cola Business y hace priority bump si corresponde.
+        // revisarPriorityBump toma y suelta los mutex de las colas internamente.
+        revisarPriorityBump(balancer);
+
+        // Pausa antes de la siguiente revision para no consumir CPU innecesariamente.
+        struct timespec espera;
+        espera.tv_sec  = INTERVALO_BALANCER_MS / 1000;
+        espera.tv_nsec = (INTERVALO_BALANCER_MS % 1000) * 1000000L;
+        nanosleep(&espera, NULL);
+    }
+
+    printf("Hilo balancer terminando, simulacion inactiva.\n");
+    return NULL;
 }
