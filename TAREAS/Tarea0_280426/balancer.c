@@ -5,30 +5,6 @@
 #include <time.h> // para clock_gettime y nanosleep
 #include <stdlib.h> // para malloc y free
 
-// priority bump: inserta un pasajero al frente de la cola, se usa para el balancer cuando un pasajero lleva mucho tiempo esperando en business y se decide subirlo a internacional para que sea atendido más rápido
-void priorityBump(Cola* cola, void* data) {
-    assert(cola != NULL); // Asegura que la cola no sea nula
-    // se crea nodo nodo antes de mutex lock porque no tiene sentido bloquear la cola para crear un nodo, y así se evita bloquear la cola por más tiempo del necesario
-    Nodo* nuevoNodo = (Nodo*)malloc(sizeof(Nodo)); // Nuevo nodo para el pasajero que se va a insertar
-    nuevoNodo->data = data; // Asigna los datos al nuevo nodo
-    nuevoNodo->next = NULL; // Siguiente nodo es NULL
-
-    pthread_mutex_lock(&cola->mutex); // Bloquea mutex para modificar la cola
-
-    if (cola->cabeza == NULL) {
-        // Si la cola está vacía, el nuevo nodo es la cabeza y el final
-        cola->cabeza = nuevoNodo;
-        cola->final = nuevoNodo;
-    } else {
-        // Si la cola no está vacía, inserta el nuevo nodo al frente
-        nuevoNodo->next = cola->cabeza; // El siguiente del nuevo nodo es la actual cabeza
-        cola->cabeza = nuevoNodo; // El nuevo nodo se convierte en la nueva cabeza
-    }
-    cola->tam++; // Se incrementa tam de la cola 
-    pthread_cond_signal(&cola->cond); // Avisa a ualquier hilo esperando que hay nuevo elemento
-    pthread_mutex_unlock(&cola->mutex); // Desbloquea mutex después de modificar la cola
-}
-
 //Init, inicializa balancer 
 void initBalancer(Balancer* b, Cola* colaEconomy, Cola* colaBusiness, Cola* colaInternacional, int32_t maxEnCola, int32_t tMaxEspera, volatile int* activa){
     assert(b != NULL); 
