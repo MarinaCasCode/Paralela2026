@@ -111,7 +111,8 @@ int main(int argc, char* argv[]) {
     int32_t umbralQ         = (int32_t)atoi(argv[8]);
  
     // Validar que los valores tengan sentido
-    if (totalPasajeros <= 0 || numEco <= 0 || numBiz <= 0 || numIntl <= 0 ||
+    if (totalPasajeros <= 0 || numEco < 0 || numBiz < 0 || numIntl < 0 ||
+        (numEco + numBiz + numIntl) <= 0 ||
         kMin <= 0 || kMax < kMin || tMax <= 0 || umbralQ <= 0) {
         printf("Error: todos los parametros deben ser positivos y kMax >= kMin.\n");
         verUso(argv[0]);
@@ -156,7 +157,8 @@ int main(int argc, char* argv[]) {
     initSupervisor(&supervisor, contadores, numContadores, &activa);
  
     Balancer balancer;
-    initBalancer(&balancer, &colaEco, &colaBiz, &colaIntl, umbralQ, tMax, &activa);
+    initBalancer(&balancer, &colaEco, &colaBiz, &colaIntl, umbralQ, tMax, &activa,
+                 numEco, numBiz, numIntl);
 
     // Crear y encolar pasaejros antes de lanzar los hilos a acomodar la llegada de pasajeros al aeropuerto, y para que haya pasajeros en las colas desde el inicio y así los counters no se queden sin hacer nada al principio
     // Ya que el profe indicó que todos los pasajeros llegan desde el inicio

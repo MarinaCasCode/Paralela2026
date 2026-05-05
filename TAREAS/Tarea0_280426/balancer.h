@@ -16,13 +16,20 @@ typedef struct {
     volatile int* activa; // flag global de simulacion
     pthread_mutex_t* mutexActiva;  // mutex que protege activa
 
+    // Numero de counters por clase
+    int32_t numCountersEco;
+    int32_t numCountersBiz;
+    int32_t numCountersIntl;
+
     // Anti-starvation: cuota de priority bumps por ventana de tiempo
     int32_t bumpsEnVentana;             // bumps hechos en la ventana actual
     struct timespec inicioVentana;      // momento en que comenzo la ventana actual
 } Balancer;
 
 // incializar balancer con colas y tiempos 
-void initBalancer(Balancer* b, Cola* colaEconomy, Cola* colaBusiness, Cola* colaInternacional, int32_t maxEnCola, int32_t tMaxEspera, volatile int* activa);
+void initBalancer(Balancer* b, Cola* colaEconomy, Cola* colaBusiness, Cola* colaInternacional,
+                  int32_t maxEnCola, int32_t tMaxEspera, volatile int* activa,
+                  int32_t numCountersEco, int32_t numCountersBiz, int32_t numCountersIntl);
 
 // liberar recursos 
 void destruirBalancer(Balancer* b);
