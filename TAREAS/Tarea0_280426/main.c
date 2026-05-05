@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
     // Lectura y validación de args en la línea de commands
     // No hay valores hardcodeados, todo viene del usuario 
     if (argc != 9) {
-        mostrarUso(argv[0]);
+        verUso(argv[0]);
         return 1;
     }
  
@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
     if (totalPasajeros <= 0 || numEco <= 0 || numBiz <= 0 || numIntl <= 0 ||
         kMin <= 0 || kMax < kMin || tMax <= 0 || umbralQ <= 0) {
         printf("Error: todos los parametros deben ser positivos y kMax >= kMin.\n");
-        mostrarUso(argv[0]);
+        verUso(argv[0]);
         return 1;
     }
  
