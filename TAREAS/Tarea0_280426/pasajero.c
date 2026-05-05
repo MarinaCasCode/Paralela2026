@@ -6,8 +6,11 @@ Pasajero* crearPasajero(int32_t id, ClasePasajero clase, int32_t tiempoServicio)
     Pasajero* p = (Pasajero*)malloc(sizeof(Pasajero)); // Crea un nuevo pasajero pidiendo su tamaño en cantidad de memoria
     p->id = id; // Asigna el ID al pasajero
     p->clase = clase; // Asigna la clase al pasajero
-    // rango de 10-100 ms para el tiempo de servicio, se asigna aleatoriamente para simular la variabilidad en el tiempo que tarda cada pasajero en ser atendido
-    p->tiempoServicio = 10 + rand() % 11; // Asigna un tiempo de servicio aleatorio entre 10 y 20 segundos
+    if (tiempoServicio >= 10 && tiempoServicio <= 100) {
+        p->tiempoServicio = tiempoServicio;
+    } else {
+        p->tiempoServicio = 10 + rand() % 91;
+    }
     clock_gettime(CLOCK_MONOTONIC, &p->tiempoLlegada); // Registra el tiempo de llegada del pasajero
 
     // cuando el counter lo atienda se llena
