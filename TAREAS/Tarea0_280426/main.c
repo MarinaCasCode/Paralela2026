@@ -111,7 +111,8 @@ int main(int argc, char* argv[]) {
     int32_t umbralQ         = (int32_t)atoi(argv[8]);
  
     // Validar que los valores tengan sentido
-    if (totalPasajeros <= 0 || numEco <= 0 || numBiz <= 0 || numIntl <= 0 ||
+    if (totalPasajeros <= 0 || numEco < 0 || numBiz < 0 || numIntl < 0 ||
+        (numEco + numBiz + numIntl) <= 0 ||
         kMin <= 0 || kMax < kMin || tMax <= 0 || umbralQ <= 0) {
         printf("Error: todos los parametros deben ser positivos y kMax >= kMin.\n");
         verUso(argv[0]);
