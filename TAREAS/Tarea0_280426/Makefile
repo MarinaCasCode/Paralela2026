@@ -4,7 +4,7 @@
 # Variables
 # ============================================================
 CC      := gcc
-CFLAGS  := -Wall -Wextra -O2 -pthread
+CFLAGS  := -std=c99 -D_DEFAULT_SOURCE -Wall -Wextra -O2 -pthread
 LDFLAGS := -pthread
 
 # Codigo fuente comun a todos los binarios (sin main)
