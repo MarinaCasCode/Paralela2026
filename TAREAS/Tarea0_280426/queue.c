@@ -46,6 +46,29 @@ void encolar(Cola* cola, void* data) {
     pthread_mutex_unlock(&cola->mutex); // Desbloquea el mutex
 }
 
+// Inserta un nodo al FRENTE de la cola (priority bump).
+void encolarAlFrente(Cola* cola, void* data) {
+    assert(cola != NULL);
+    // Se reserva memoria del nodo antes de tomar el mutex para minimizar la seccion critica
+    Nodo* nuevoNodo = (Nodo*)malloc(sizeof(Nodo));
+    nuevoNodo->data = data;
+    nuevoNodo->next = NULL;
+
+    pthread_mutex_lock(&cola->mutex);
+    if (cola->cabeza == NULL) {
+        // Cola vacia: el nuevo nodo es cabeza y final
+        cola->cabeza = nuevoNodo;
+        cola->final = nuevoNodo;
+    } else {
+        // Cola con elementos: el nuevo nodo se inserta antes de la cabeza actual
+        nuevoNodo->next = cola->cabeza;
+        cola->cabeza = nuevoNodo;
+    }
+    cola->tam++;
+    pthread_cond_signal(&cola->cond); // Avisa a algun counter que hay nuevo elemento
+    pthread_mutex_unlock(&cola->mutex);
+}
+
 void* desencolar(Cola* cola) {
     assert(cola != NULL); // Asegura que la cola no sea nula
     pthread_mutex_lock(&cola->mutex); // Bloquea el mutex para modificar la cola
@@ -75,4 +98,3 @@ size_t tamCola(Cola* cola) {
     pthread_mutex_unlock(&cola->mutex); // Desbloquea el mutex
     return tam; // Devuelve el tamaño de la cola
 }
-
