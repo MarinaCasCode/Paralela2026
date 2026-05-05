@@ -12,6 +12,7 @@
 // compilar con: gcc -o simulacion main.c counter.c pasajero.c queue.c balancer.c supervisor.c -lpthread
 // compilar en kabré con: gcc -g -std=c99 -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=600 -o simulacion main.c counter.c pasajero.c queue.c balancer.c supervisor.c -lpthread
 // valgrind: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./simulacion 100 2 1 1 3 6 500 20
+// helgrind: valgrind --tool=helgrind ./simulacion 100 2 1 1 3 6 500 20 2>&1 | tail -20
 
 // Mutex global que protege la variable activa
 pthread_mutex_t mutexActiva = PTHREAD_MUTEX_INITIALIZER; 
