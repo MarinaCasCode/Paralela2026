@@ -87,28 +87,67 @@ static void revisarPriorityBump(Balancer* b) {
     pthread_mutex_unlock(&b->colaBusiness->mutex); // Desbloquea mutex de business después de revisar todos los pasajeros
 }
 
+// Redistribucion por umbral Q.
+static void redistribuirCola(Cola* origen, Cola* destino, int32_t maxEnCola, const char* nombreOrigen) {
+    assert(origen != NULL);
+    assert(destino != NULL);
+
+    // extraer excedente de origen
+    pthread_mutex_lock(&origen->mutex);
+
+    if ((int32_t)origen->tam <= maxEnCola) {
+        // No hay excedente, salimos rapido sin hacer nada.
+        pthread_mutex_unlock(&origen->mutex);
+        return;
+    }
+
+    int32_t excedente = (int32_t)origen->tam - maxEnCola;
+
+    // Lista local de pasajeros a mover
+    Pasajero** aMover = (Pasajero**)malloc(sizeof(Pasajero*) * excedente);
+    assert(aMover != NULL);
+
+    size_t corte = origen->tam - (size_t)excedente; // cantidad de nodos que se quedan
+    Nodo* prevCorte = NULL;
+    Nodo* actual = origen->cabeza;
+    for (size_t i = 0; i < corte && actual != NULL; i++) {
+        prevCorte = actual;
+        actual = actual->next;
+    }
+
+    int32_t idx = 0;
+    while (actual != NULL && idx < excedente) {
+        aMover[idx++] = (Pasajero*)actual->data;
+        Nodo* sig = actual->next;
+        free(actual);
+        actual = sig;
+    }
+
+    // Cortar la lista de origen
+    if (prevCorte != NULL) {
+        prevCorte->next = NULL;
+        origen->final = prevCorte;
+    } else {
+        // corte == 0: la cola queda vacia
+        origen->cabeza = NULL;
+        origen->final = NULL;
+    }
+    origen->tam = corte;
+
+    pthread_mutex_unlock(&origen->mutex);
+
+    // Los pasajeros se marcan como redirigidos para las estadisticas finales.
+    for (int32_t i = 0; i < excedente; i++) {
+        aMover[i]->redirected = 1;
+        encolar(destino, aMover[i]);
+        printf("Balancer: REDISTRIBUCION: Pasajero %d movido de %s a Internacional (cola %s excedia umbral %d).\n",
+               aMover[i]->id, nombreOrigen, nombreOrigen, maxEnCola);
+    }
+
+    free(aMover);
+}
+
 // hilo principal de balancer 
 void* hiloBalancer(void* arg) {
     Balancer* balancer = (Balancer*)arg; // Convierte argumento a un puntero a Balancer
     assert(balancer != NULL); // Asegura que el balancer no sea nulo
-
-    // Intervalo de polling del balancer en milisegundos.
-    const long INTERVALO_BALANCER_MS = 50;
-
-    printf("Hilo balancer iniciado. Intervalo de revision: %ld ms.\n", INTERVALO_BALANCER_MS);
-
-    while (*(balancer->activa)) {
-        // Revisa la cola Business y hace priority bump si corresponde.
-        // revisarPriorityBump toma y suelta los mutex de las colas internamente.
-        revisarPriorityBump(balancer);
-
-        // Pausa antes de la siguiente revision para no consumir CPU innecesariamente.
-        struct timespec espera;
-        espera.tv_sec  = INTERVALO_BALANCER_MS / 1000;
-        espera.tv_nsec = (INTERVALO_BALANCER_MS % 1000) * 1000000L;
-        nanosleep(&espera, NULL);
-    }
-
-    printf("Hilo balancer terminando, simulacion inactiva.\n");
-    return NULL;
-}
