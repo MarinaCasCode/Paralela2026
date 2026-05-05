@@ -157,7 +157,8 @@ int main(int argc, char* argv[]) {
     initSupervisor(&supervisor, contadores, numContadores, &activa);
  
     Balancer balancer;
-    initBalancer(&balancer, &colaEco, &colaBiz, &colaIntl, umbralQ, tMax, &activa);
+    initBalancer(&balancer, &colaEco, &colaBiz, &colaIntl, umbralQ, tMax, &activa,
+                 numEco, numBiz, numIntl);
 
     // Crear y encolar pasaejros antes de lanzar los hilos a acomodar la llegada de pasajeros al aeropuerto, y para que haya pasajeros en las colas desde el inicio y así los counters no se queden sin hacer nada al principio
     // Ya que el profe indicó que todos los pasajeros llegan desde el inicio
