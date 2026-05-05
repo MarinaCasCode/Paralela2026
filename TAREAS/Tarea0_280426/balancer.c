@@ -136,7 +136,7 @@ static void redistribuirCola(Cola* origen, Cola* destino, int32_t maxEnCola, con
 
     pthread_mutex_unlock(&origen->mutex);
 
-    // Los pasajeros se marcan como redirigidos para las estadisticas finales.
+    // encolar en destino
     for (int32_t i = 0; i < excedente; i++) {
         aMover[i]->redirected = 1;
         encolar(destino, aMover[i]);
@@ -151,3 +151,30 @@ static void redistribuirCola(Cola* origen, Cola* destino, int32_t maxEnCola, con
 void* hiloBalancer(void* arg) {
     Balancer* balancer = (Balancer*)arg; // Convierte argumento a un puntero a Balancer
     assert(balancer != NULL); // Asegura que el balancer no sea nulo
+
+    // Intervalo de polling del balancer en milisegundos.
+    const long INTERVALO_BALANCER_MS = 50;
+
+    printf("Hilo balancer iniciado. Intervalo de revision: %ld ms.\n", INTERVALO_BALANCER_MS);
+
+    while (*(balancer->activa)) {
+        // 1. Priority bump: business que han esperado mas que tMaxEspera -> frente de Internacional.
+        revisarPriorityBump(balancer);
+
+        // 2. Redistribucion por umbral Q: si Economy o Business exceden maxEnCola,
+        //    mover excedente al final de Internacional.
+        redistribuirCola(balancer->colaEconomy, balancer->colaInternacional,
+                         balancer->maxEnCola, "Economy");
+        redistribuirCola(balancer->colaBusiness, balancer->colaInternacional,
+                         balancer->maxEnCola, "Business");
+
+        // Pausa antes de la siguiente revision para no consumir CPU innecesariamente.
+        struct timespec espera;
+        espera.tv_sec  = INTERVALO_BALANCER_MS / 1000;
+        espera.tv_nsec = (INTERVALO_BALANCER_MS % 1000) * 1000000L;
+        nanosleep(&espera, NULL);
+    }
+
+    printf("Hilo balancer terminando, simulacion inactiva.\n");
+    return NULL;
+}
