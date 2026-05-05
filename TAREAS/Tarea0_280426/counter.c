@@ -9,6 +9,7 @@
 
 
 // funciones internas
+// (calcularDiferenciaMs eliminada: se usa diferenciaMs de pasajero.h)
 
 // elector de k aleatorio en el turno actual dle counter
 static int elegirK(Counter* contador) {
@@ -172,9 +173,18 @@ void* hilo_counter(void* arg) {
             nombreCounter(contador->tipo), //%s
             duracionBreakMs, //%d
             contador->atendidosTurno); // Imprime un mensaje indicando que el counter ha entr
-        pthread_cond_wait(&contador->condReopen, &contador->mutex); // Counter duerme aqui esperando a que supervisor lo despierte, al esperar suelta el mutex para ue sup lo tome. se hace para que no haya deadlock ya que los dos neecsitan el mutex
-        // Al despertar, el counter se reabre y se elige un nuevo K para el siguiente turno
-        contador->estado = COUNTER_OPEN; // Cambia el estado del counter a OPEN al reabrir
+
+        // Esperar a que el Supervisor reabra el counter.
+            pthread_cond_wait(&contador->condReopen, &contador->mutex); // Suelta el mutex mientras espera, lo retoma al despertar
+        }
+
+        // Si salimos del while porque la simulacion termino, soltamos el mutex
+        // y salimos del bucle principal del counter sin reabrir.
+        if (!*(contador->activa)) {
+            pthread_mutex_unlock(&contador->mutex);
+            break; // Sale del while principal del hilo del counter
+        }
+
         contador->atendidosTurno = 0; // Reinicia el contador de atendidos en el turno al reabrir
         contador->kActual = elegirK(contador); 
         printf("Counter %d (%s) reabierto por Supervisor. Nuevo K para el siguiente turno: %d\n", contador->id, nombreCounter(contador->tipo), contador->kActual);
