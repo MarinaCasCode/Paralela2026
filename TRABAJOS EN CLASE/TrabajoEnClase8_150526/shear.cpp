@@ -105,8 +105,12 @@ void sortRowsAlternateDirection(std::vector<int>& A, int N) {
 }
 
 void sortColumns(std::vector<int>& A, int N) {
-    // TODO en el proximo commit
-    (void)A; (void)N;
+    // Columna j empieza en A[j], tiene N elementos, stride = N.
+    // Todas las columnas en orden ascendente.
+    for (int j = 0; j < N; ++j) {
+        insertionSortStrided(A, /*start=*/j, /*count=*/N,
+                             /*stride=*/N, /*ascending=*/true);
+    }
 }
 
 void shearSort(std::vector<int>& A, int N) {
