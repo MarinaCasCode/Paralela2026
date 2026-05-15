@@ -7,22 +7,25 @@
 
 #include <cstdio>    // printf
 #include <cstdlib>   // malloc, free, exit
-#include <cstring>   // memcpy (se usara en el paso de actualizacion)
+#include <cstring>   // memcpy
 #include <omp.h>     // OpenMP: directivas y omp_get_wtime
 
 // Parametros base que pide el enunciado
 #define N         100    // dimension de la malla N x N x N
 #define NUM_STEPS 1000   // numero de iteraciones de Jacobi
 
-// Conversion de coordenadas 3D (i,j,k) a indice lineal.
-// La malla se guarda como un bloque plano contiguo de N*N*N doubles.
-// Orden: i es el indice mas externo, k el mas interno.
+#define TEMP_COLD  0.0     // cara inferior
+#define TEMP_HOT   100.0   // las otras cinco caras
+
+// Conversion de coordenadas 3D (i,j,k) a indice lineal
+// La malla se guarda como un bloque plano contiguo de N*N*N doubles
+// Orden: i es el indice mas externo, k el mas interno
 static inline int idx(int i, int j, int k) {
     return (i * N * N) + (j * N) + k;
 }
 
-// Asigna un arreglo 3D (bloque plano de N*N*N doubles) con malloc.
-// Termina el programa si malloc falla.
+// Asigna un arreglo 3D (bloque plano de N*N*N doubles) con malloc
+// Termina el programa si malloc falla
 static double* allocate_grid() {
     double* grid = (double*) malloc((size_t) N * N * N * sizeof(double));
     if (grid == NULL) {
@@ -32,9 +35,42 @@ static double* allocate_grid() {
     return grid;
 }
 
-// Libera un arreglo asignado con allocate_grid.
+// Libera un arreglo asignado con allocate_grid
 static void free_grid(double* grid) {
     free(grid);
+}
+
+// Inicializa la malla: condiciones de frontera e interior.
+static void initialize(double* array_old, double* array_new) {
+    const double interior_value =
+        (5.0 * TEMP_HOT + 1.0 * TEMP_COLD) / 6.0;
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            for (int k = 0; k < N; k++) {
+                bool is_boundary =
+                    (i == 0) || (i == N - 1) ||
+                    (j == 0) || (j == N - 1) ||
+                    (k == 0) || (k == N - 1);
+
+                double value;
+                if (is_boundary) {
+                    if (i == 0) {
+                        value = TEMP_COLD;   // cara inferior
+                    } else {
+                        value = TEMP_HOT;    // las otras cinco caras
+                    }
+                } else {
+                    value = interior_value;  // punto interior
+                }
+
+                array_old[idx(i, j, k)] = value;
+            }
+        }
+    }
+
+    // array_new arranca identico a array_old (fronteras incluidas)
+    memcpy(array_new, array_old, (size_t) N * N * N * sizeof(double));
 }
 
 int main() {
@@ -47,6 +83,11 @@ int main() {
     double* array_new = allocate_grid();
 
     printf("Memoria asignada correctamente para array_old y array_new\n");
+
+    // Inicializacion: condiciones de frontera e interior
+    initialize(array_old, array_new);
+
+    printf("Malla inicializada (fronteras e interior)\n");
 
     // Liberacion de memoria
     free_grid(array_old);
