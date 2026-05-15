@@ -87,7 +87,7 @@ static void initialize(double* array_old, double* array_new) {
 // No hay condiciones de carrera porque el viejo solo se lee y el nuevo solo se escribe 
 // Ningun hilo se modifica en el mismo paso
 
-static void jacobi_step(cont double* array_old, double * array_new){
+static void jacobi_step(const double* array_old, double * array_new){
     for (int i = 1; i < N - 1; i++) {
         for (int j = 1; j < N - 1; j++) {
             for (int k = 1; k < N - 1; k++) {
@@ -107,7 +107,7 @@ static void jacobi_step(cont double* array_old, double * array_new){
 // write_data_for_paraview: se exporta la malla final en formato VTK legacy en ASCII
 // El archivo se puede abrir directamente con Paraview 
 // formatoe es "STRUCTURED_POINTS" con dimensiones N x N x N, origen (0,0,0) y espaciado (1,1,1)
-static void write_data_for_paraview(const double* grid, conts char* filename){
+static void write_data_for_paraview(const double* grid, const char* filename){
     FILE* file = fopen(filename, "w");
     if (file == NULL) {
         fprintf(stderr, "Error: no se pudo abrir el archivo para escribir\n");
