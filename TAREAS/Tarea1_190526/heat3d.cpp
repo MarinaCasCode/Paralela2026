@@ -17,6 +17,8 @@
 #define TEMP_COLD  0.0     // cara inferior (i==0)
 #define TEMP_HOT   100.0   // las otras cinco caras
 
+// Paralelizar con OpenMP
+#define USE_OPENMP
 
 
 // Conversion de coordenadas 3D (i,j,k) a indice lineal
@@ -88,6 +90,9 @@ static void initialize(double* array_old, double* array_new) {
 // Ningun hilo se modifica en el mismo paso
 
 static void jacobi_step(const double* array_old, double * array_new){
+    #ifdef USE_OPENMP //Forma Stencil: cada punto se actualiza con los valores de sus 6 vecinos ortogonales 
+    #pragma omp parallel for // paraleliza el bucle externo (i) para distribuir filas entre hilos
+    #endif // 
     for (int i = 1; i < N - 1; i++) {
         for (int j = 1; j < N - 1; j++) {
             for (int k = 1; k < N - 1; k++) {
