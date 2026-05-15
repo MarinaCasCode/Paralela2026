@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <string>
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
@@ -28,9 +29,15 @@ static double wtime() {
 }
 
 // Manejo de la matriz
-void generateRandomMatrix(std::vector<int>& A, int N) {
+static bool isPowerOfTwo(int n) {
+    return n > 0 && (n & (n - 1)) == 0;
+}
+
+void generateRandomMatrix(std::vector<int>& A, int N, unsigned seed) {
     A.resize(static_cast<size_t>(N) * N);
+    std::srand(seed);
     for (int i = 0; i < N * N; ++i) {
+        // Valores en [0, 10*N*N) para tener buena dispersión
         A[i] = std::rand() % (N * N * 10);
     }
 }
@@ -44,7 +51,8 @@ bool readMatrixFromFile(std::vector<int>& A, int N, const char* filename) {
     A.resize(static_cast<size_t>(N) * N);
     for (int i = 0; i < N * N; ++i) {
         if (!(in >> A[i])) {
-            std::cerr << "Error: archivo con menos de " << N * N << " elementos\n";
+            std::cerr << "Error: archivo con menos de " << N * N
+                      << " elementos (leidos " << i << ")\n";
             return false;
         }
     }
@@ -54,7 +62,8 @@ bool readMatrixFromFile(std::vector<int>& A, int N, const char* filename) {
 void printMatrix(const std::vector<int>& A, int N) {
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-            std::cout << A[i * N + j] << " ";
+            std::cout << A[i * N + j];
+            if (j + 1 < N) std::cout << "\t";
         }
         std::cout << "\n";
     }
@@ -66,10 +75,12 @@ void printMatrix(const std::vector<int>& A, int N) {
 // Funciones del algoritmo Shear Sort
 void sortRowsAlternateDirection(std::vector<int>& A, int N) {
     // TODO
+    (void)A; (void)N;
 }
 
 void sortColumns(std::vector<int>& A, int N) {
     // TODO
+    (void)A; (void)N;
 }
 
 void shearSort(std::vector<int>& A, int N) {
@@ -82,14 +93,17 @@ void shearSort(std::vector<int>& A, int N) {
 
 bool verifySnakeOrder(const std::vector<int>& A, int N) {
     // TODO
+    (void)A; (void)N;
     return true;
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2 || argc > 3) {
+    if (argc < 2 || argc > 4) {
         std::cerr << "Uso:\n"
                   << "  " << argv[0] << " N\n"
-                  << "  " << argv[0] << " N fileA\n";
+                  << "  " << argv[0] << " N fileA\n"
+                  << "  " << argv[0] << " N --print          (imprime matriz)\n"
+                  << "  " << argv[0] << " N fileA --print\n";
         return 1;
     }
 
@@ -98,21 +112,46 @@ int main(int argc, char* argv[]) {
         std::cerr << "Error: N debe ser un entero positivo\n";
         return 1;
     }
+    if (!isPowerOfTwo(N)) {
+        std::cerr << "Advertencia: N=" << N
+                  << " no es potencia de 2. Shear Sort puede no terminar con orden perfecto.\n";
+    }
+
+    // Parsear argumentos restantes
+    const char* fileA = nullptr;
+    bool doPrint = false;
+    for (int i = 2; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--print") {
+            doPrint = true;
+        } else {
+            fileA = argv[i];
+        }
+    }
 
     std::vector<int> A;
 
-    if (argc == 2) {
-        std::srand(static_cast<unsigned>(std::time(nullptr)));
-        generateRandomMatrix(A, N);
+    if (fileA == nullptr) {
+        generateRandomMatrix(A, N, /*seed=*/42);
     } else {
-        if (!readMatrixFromFile(A, N, argv[2])) {
+        if (!readMatrixFromFile(A, N, fileA)) {
             return 1;
         }
+    }
+
+    if (doPrint) {
+        std::cout << "=== Matriz inicial ===\n";
+        printMatrix(A, N);
     }
 
     double t0 = wtime();
     shearSort(A, N);
     double t1 = wtime();
+
+    if (doPrint) {
+        std::cout << "=== Matriz final ===\n";
+        printMatrix(A, N);
+    }
 
     std::cout << "N = " << N << "\n";
 #ifdef _OPENMP
