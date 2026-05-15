@@ -37,7 +37,6 @@ void generateRandomMatrix(std::vector<int>& A, int N, unsigned seed) {
     A.resize(static_cast<size_t>(N) * N);
     std::srand(seed);
     for (int i = 0; i < N * N; ++i) {
-        // Valores en [0, 10*N*N) para tener buena dispersión
         A[i] = std::rand() % (N * N * 10);
     }
 }
@@ -70,16 +69,43 @@ void printMatrix(const std::vector<int>& A, int N) {
 }
 
 
-// Algoritmo de ordenamiento a implementar: insertion sort
+// Insertion sort genérico con stride
+static void insertionSortStrided(std::vector<int>& A,
+                                 int start, int count, int stride,
+                                 bool ascending) {
+    for (int i = 1; i < count; ++i) {
+        int key = A[start + i * stride];
+        int j = i - 1;
+        if (ascending) {
+            while (j >= 0 && A[start + j * stride] > key) {
+                A[start + (j + 1) * stride] = A[start + j * stride];
+                --j;
+            }
+        } else {
+            while (j >= 0 && A[start + j * stride] < key) {
+                A[start + (j + 1) * stride] = A[start + j * stride];
+                --j;
+            }
+        }
+        A[start + (j + 1) * stride] = key;
+    }
+}
+
 
 // Funciones del algoritmo Shear Sort
 void sortRowsAlternateDirection(std::vector<int>& A, int N) {
-    // TODO
-    (void)A; (void)N;
+    // Fila i empieza en A[i*N], tiene N elementos, stride = 1.
+    // Filas pares (i % 2 == 0) -> ascendente
+    // Filas impares           -> descendente
+    for (int i = 0; i < N; ++i) {
+        bool ascending = (i % 2 == 0);
+        insertionSortStrided(A, /*start=*/i * N, /*count=*/N,
+                             /*stride=*/1, ascending);
+    }
 }
 
 void sortColumns(std::vector<int>& A, int N) {
-    // TODO
+    // TODO en el proximo commit
     (void)A; (void)N;
 }
 
@@ -117,7 +143,6 @@ int main(int argc, char* argv[]) {
                   << " no es potencia de 2. Shear Sort puede no terminar con orden perfecto.\n";
     }
 
-    // Parsear argumentos restantes
     const char* fileA = nullptr;
     bool doPrint = false;
     for (int i = 2; i < argc; ++i) {
