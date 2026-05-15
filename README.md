@@ -23,6 +23,7 @@ Asistente Marlon Murillo
 | 5 | 17 abr | `TrabajoEnClase5_170426` | Aproximacion de pi |
 | 6 | 21 abr | `TrabajoEnClase6_210426` | Design patterns |
 | 7 | 24 abr | `TrabajoEnClase7_240426` | Algoritmo de Strassen |
+| 8 | 15 may | `TrabajoEnClase8_150526` | ShearSort |
 
 ## Tareas
 
