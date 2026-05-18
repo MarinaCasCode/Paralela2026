@@ -2,7 +2,7 @@
 # Para compilar: make
 
 CXX = g++
-CXXFLAGS = -O2 -Wall
+CXXFLAGS = -O2 -fopenmp -Wall
 TARGET = heat3dSerial
 SRC = heat3dSerial.cpp
 

@@ -8,7 +8,7 @@
 #include <cstdio>    // printf, fprintf, fopen, fclose
 #include <cstdlib>   // malloc, free, exit
 #include <cstring>   // memcpy
-#include <ctime>     // clock, CLOCKS_PER_SEC
+#include <omp.h>     // omp_get_wtime
 
 // Parametros base que pide el enunciado
 #define N         100    // dimension de la malla N x N x N
@@ -162,7 +162,7 @@ int main() {
 
     //Jacobi con medicion de timepo
     printf("Iniciando simulación...\n");
-    clock_t t_start = clock();
+    double t_start = omp_get_wtime();
 
     for (int step = 0; step < NUM_STEPS; step++) {
         // leer old, escribri en new
@@ -173,8 +173,8 @@ int main() {
     
     }
 
-    clock_t t_end = clock();
-    printf("Simulación terminada en %.4f segundos\n", ((double)(t_end - t_start)) / CLOCKS_PER_SEC);
+    double t_end = omp_get_wtime();
+    printf("Simulación terminada en %.4f segundos\n", t_end - t_start);
 
     // Resultado para paraview
     write_data_for_paraview(array_old, "heat3d_output.vtk");
