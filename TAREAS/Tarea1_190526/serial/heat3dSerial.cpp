@@ -4,15 +4,18 @@
 // Metodo de Jacobi con estencil de 6 vecinos + paralelizacion con OpenMp
 //
 // Compilacion: ver Makefile (g++ -O2 -fopenmp -Wall)
+// Uso: ./heat3dSerial [N] [NUM_STEPS]
+//   N         - dimension de la malla N x N x N (por defecto 100)
+//   NUM_STEPS - numero de iteraciones de Jacobi   (por defecto 1000)
 
 #include <cstdio>    // printf, fprintf, fopen, fclose
-#include <cstdlib>   // malloc, free, exit
+#include <cstdlib>   // malloc, free, exit, atoi
 #include <cstring>   // memcpy
 #include <omp.h>     // omp_get_wtime
 
-// Parametros base que pide el enunciado
-#define N         100    // dimension de la malla N x N x N
-#define NUM_STEPS 1000   // numero de iteraciones de Jacobi
+// Valores por defecto si no se pasan argumentos en la linea de comandos
+#define DEFAULT_N         100    // dimension de la malla N x N x N
+#define DEFAULT_NUM_STEPS 1000   // numero de iteraciones de Jacobi
 
 #define TEMP_COLD  0.0     // cara inferior (i==0)
 #define TEMP_HOT   100.0   // las otras cinco caras
@@ -21,14 +24,14 @@
 // Conversion de coordenadas 3D (i,j,k) a indice lineal
 // La malla se guarda como un bloque plano contiguo de N*N*N doubles, ya que con malloc se asigna un bloque plano de memoria
 // Orden: i es el indice mas externo, k el mas interno
-static inline int idx(int i, int j, int k) {
+static inline int idx(int i, int j, int k, int N) {
     return (i * N * N) + (j * N) + k;
 }
 
 
 // Asigna un arreglo 3D (bloque plano de N*N*N doubles) con malloc
 // Si en el sistema no hay espacio, el programa muestra error en vez de cerrarse de forma repentina
-static double* allocate_grid() {
+static double* allocate_grid(int N) {
     double* grid = (double*) malloc((size_t) N * N * N * sizeof(double));
     if (grid == NULL) {
         fprintf(stderr, "Error: no se pudo asignar memoria para la malla\n");
@@ -47,7 +50,7 @@ static void free_grid(double* grid) {
 // Inicializa la malla: temperaturas iniciales. condiciones de frontera e interior.
 // CONDICIONES DE FRONTERA: cara inferior (i==0) a TEMP_COLD, las otras cinco caras a TEMP_HOT
 // PUNTO INTERIOR: valor promedio ponderado de las caras (5*100)
-static void initialize(double* array_old, double* array_new) {
+static void initialize(double* array_old, double* array_new, int N) {
     const double interior_value = (5.0 * TEMP_HOT + 1.0 * TEMP_COLD) / 6.0;
 
     for (int i = 0; i < N; i++) {
@@ -69,7 +72,7 @@ static void initialize(double* array_old, double* array_new) {
                     value = interior_value;  // punto interior
                 }
 
-                array_old[idx(i, j, k)] = value;
+                array_old[idx(i, j, k, N)] = value;
             }
         }
     }
@@ -84,17 +87,17 @@ static void initialize(double* array_old, double* array_new) {
 // No hay condiciones de carrera porque el viejo solo se lee y el nuevo solo se escribe 
 // Ningun hilo se modifica en el mismo paso
 
-static void jacobi_step(const double* array_old, double * array_new) {
+static void jacobi_step(const double* array_old, double * array_new, int N) {
     for (int i = 1; i < N - 1; i++) {
         for (int j = 1; j < N - 1; j++) {
             for (int k = 1; k < N - 1; k++) {
-                array_new[idx(i, j, k)] = (
-                    array_old[idx(i - 1, j, k)] + // vecino i-1
-                    array_old[idx(i + 1, j, k)] + // vecino i+1
-                    array_old[idx(i, j - 1, k)] + // vecino j-1
-                    array_old[idx(i, j + 1, k)] + // vecino j+1
-                    array_old[idx(i, j, k - 1)] + // vecino k-1
-                    array_old[idx(i, j, k + 1)]   // vecino k+1
+                array_new[idx(i, j, k, N)] = (
+                    array_old[idx(i - 1, j, k, N)] + // vecino i-1
+                    array_old[idx(i + 1, j, k, N)] + // vecino i+1
+                    array_old[idx(i, j - 1, k, N)] + // vecino j-1
+                    array_old[idx(i, j + 1, k, N)] + // vecino j+1
+                    array_old[idx(i, j, k - 1, N)] + // vecino k-1
+                    array_old[idx(i, j, k + 1, N)]   // vecino k+1
                 ) / 6.0;
             }
         }
@@ -104,7 +107,7 @@ static void jacobi_step(const double* array_old, double * array_new) {
 // write_data_for_paraview: se exporta la malla final en formato VTK legacy en ASCII
 // El archivo se puede abrir directamente con Paraview 
 // formatoe es "STRUCTURED_POINTS" con dimensiones N x N x N, origen (0,0,0) y espaciado (1,1,1)
-static void write_data_for_paraview(const double* grid, const char* filename){
+static void write_data_for_paraview(const double* grid, const char* filename, int N){
     FILE* file = fopen(filename, "w");
     if (file == NULL) {
         fprintf(stderr, "Error: no se pudo abrir el archivo para escribir\n");
@@ -127,7 +130,7 @@ static void write_data_for_paraview(const double* grid, const char* filename){
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             for (int k = 0; k < N; k++) {
-                fprintf(file, "%f\n", grid[idx(i, j, k)]);
+                fprintf(file, "%f\n", grid[idx(i, j, k, N)]);
             }
         }
     }
@@ -135,21 +138,41 @@ static void write_data_for_paraview(const double* grid, const char* filename){
     printf("Datos escritos en archivo para Paraview: %s\n", filename);
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     // Flujo main 
+    // Parsear argumentos N y NUM_STEPS
     // Asignar mem para array_old y new
     // Incializar condiciones 
     // Ejecutar n iteraciones de Jacobi (midiedno el tiempo)
     // Exportar result en archivo vtk
     // liberar memoria 
 
+    // Parseo de argumentos. Uso: ./heat3dSerial [N] [NUM_STEPS]
+    int N         = DEFAULT_N;
+    int NUM_STEPS = DEFAULT_NUM_STEPS;
+
+    if (argc >= 2) {
+        N = atoi(argv[1]);
+        if (N < 3) {
+            fprintf(stderr, "Error: N debe ser al menos 3 (recibido: %d)\n", N);
+            return EXIT_FAILURE;
+        }
+    }
+    if (argc >= 3) {
+        NUM_STEPS = atoi(argv[2]);
+        if (NUM_STEPS < 1) {
+            fprintf(stderr, "Error: NUM_STEPS debe ser al menos 1 (recibido: %d)\n", NUM_STEPS);
+            return EXIT_FAILURE;
+        }
+    }
+
     printf("Heat3D Serial\n");
     printf("N         = %d\n", N);
     printf("NUM_STEPS = %d\n", NUM_STEPS);
 
     // Asignacion de los dos arreglos de Jacobi
-    double* array_old = allocate_grid();
-    double* array_new = allocate_grid();
+    double* array_old = allocate_grid(N);
+    double* array_new = allocate_grid(N);
 
     printf("Memoria asignada correctamente para array_old y array_new\n");
     // Imprimir memoria exacta asiganda 
@@ -157,7 +180,7 @@ int main() {
 
 
     // Inicializacion: condiciones de frontera e interior
-    initialize(array_old, array_new);
+    initialize(array_old, array_new, N);
     printf("Malla inicializada (fronteras e interior)\n");
 
     //Jacobi con medicion de timepo
@@ -166,7 +189,7 @@ int main() {
 
     for (int step = 0; step < NUM_STEPS; step++) {
     // leer de array_old, escribir en array_new
-    jacobi_step(array_old, array_new);
+    jacobi_step(array_old, array_new, N);
 
     // intercambiar punteros: lo que era nuevo ahora es viejo para la proxima iteracion, y viceversa
     double* tmp = array_old;
@@ -178,7 +201,7 @@ int main() {
     printf("Simulación terminada en %.4f segundos\n", t_end - t_start);
 
     // Resultado para paraview
-    write_data_for_paraview(array_old, "heat3d_output.vtk");
+    write_data_for_paraview(array_old, "heat3d_output.vtk", N);
 
     // Liberacion de memoria
     free_grid(array_old);
