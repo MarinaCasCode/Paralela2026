@@ -141,7 +141,7 @@ static void write_data_for_paraview(const double* grid, const char* filename){
     }
 
     fclose(file); 
-    fprintf("Datos escritos en archivo para Paraview: %s\n", filename);
+    printf("Datos escritos en archivo para Paraview: %s\n", filename);
 }
 
 int main() {
