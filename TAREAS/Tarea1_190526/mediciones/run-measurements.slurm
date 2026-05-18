@@ -23,11 +23,11 @@
 
 set -e  # parar si algo falla
 
-# Carpeta raíz de la tarea (un nivel arriba de mediciones/)
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# SLURM_SUBMIT_DIR es la carpeta desde donde se lanzó sbatch (mediciones/).
+RESULTS_DIR="$SLURM_SUBMIT_DIR"
+ROOT_DIR="$(cd "$RESULTS_DIR/.." && pwd)"
 SERIAL_DIR="$ROOT_DIR/serial"
 PARALELO_DIR="$ROOT_DIR/paralelo"
-RESULTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Archivo CSV de salida
 CSV="$RESULTS_DIR/results.csv"
