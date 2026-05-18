@@ -61,19 +61,21 @@ static void initialize(double* array_old, double* array_new) {
                 double value;
                 if (is_boundary) {
                     if (i == 0) {
-                        value = (i==0) ? TEMP_COLD : TEMP_HOT ;     // cara inferior
-                
+                        value = TEMP_COLD;   // cara inferior
                     } else {
+                        value = TEMP_HOT;    // las otras cinco caras
+                    }
+                } else {
                     value = interior_value;  // punto interior
                 }
+
                 array_old[idx(i, j, k)] = value;
             }
         }
     }
+
     // array_new arranca identico a array_old (fronteras incluidas)
     memcpy(array_new, array_old, (size_t) N * N * N * sizeof(double));
-}
-
 }
 
 //jacobi_step: realiza una iteración de Jacobi
