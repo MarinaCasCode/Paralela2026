@@ -87,7 +87,10 @@ static void initialize(double* array_old, double* array_new, int N) {
 // No hay condiciones de carrera porque el viejo solo se lee y el nuevo solo se escribe 
 // Ningun hilo se modifica en el mismo paso
 
-static void jacobi_step(const double* array_old, double * array_new, int N) {
+static void jacobi_step(const double* array_old, double* array_new, int N) {
+    // Paralelizamos los ciclos externos. Cada hilo escribe posiciones distintas
+    // de array_new y solo lee array_old, por eso no hay condiciones de carrera.
+    #pragma omp parallel for collapse(2) schedule(static)
     for (int i = 1; i < N - 1; i++) {
         for (int j = 1; j < N - 1; j++) {
             for (int k = 1; k < N - 1; k++) {
@@ -166,9 +169,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    printf("Heat3D Serial\n");
+    printf("Heat3D OpenMP\n");
     printf("N         = %d\n", N);
     printf("NUM_STEPS = %d\n", NUM_STEPS);
+    printf("Hilos OpenMP disponibles = %d\n", omp_get_max_threads());
 
     // Asignacion de los dos arreglos de Jacobi
     double* array_old = allocate_grid(N);
