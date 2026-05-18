@@ -165,13 +165,14 @@ int main() {
     double t_start = omp_get_wtime();
 
     for (int step = 0; step < NUM_STEPS; step++) {
-        // leer old, escribri en new
-        jacobi_step(array_old, array_new);
+    // leer de array_old, escribir en array_new
+    jacobi_step(array_old, array_new);
 
-        // copiar new a old para nueva iteracion (actualización)
-        memcpy(array_old, array_new, (size_t) N * N * N * sizeof(double));
-    
-    }
+    // intercambiar punteros: lo que era nuevo ahora es viejo para la proxima iteracion, y viceversa
+    double* tmp = array_old;
+    array_old   = array_new;
+    array_new   = tmp;
+}
 
     double t_end = omp_get_wtime();
     printf("Simulación terminada en %.4f segundos\n", t_end - t_start);
