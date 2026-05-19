@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
     int NUM_STEPS = DEFAULT_NUM_STEPS;
 
     if (argc >= 2) {
-        N = atoi(argv[1]);
+        N = atoi(argv[1]); // atoi convierte string a int, si no es un numero devuelve 0, por eso se valida que sea al menos 3
         if (N < 3) {
             fprintf(stderr, "Error: N debe ser al menos 3 (recibido: %d)\n", N);
             return EXIT_FAILURE;
@@ -204,7 +204,7 @@ int main(int argc, char* argv[]) {
     double t_end = omp_get_wtime();
     printf("Simulación terminada en %.4f segundos\n", t_end - t_start);
 
-    // Resultado para paraview
+    // Resultado para paraview (vtk legacy ASCII)
     write_data_for_paraview(array_old, "heat3d_output.vtk", N);
 
     // Liberacion de memoria
