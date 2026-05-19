@@ -1,9 +1,6 @@
 # Sistema
 .DS_Store
 
-# Documentos
-*.pdf
-
 # Binarios compilados
 heat3d
 heat3dSerial
