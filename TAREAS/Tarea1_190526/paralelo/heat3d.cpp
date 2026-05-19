@@ -199,6 +199,13 @@ int main(int argc, char* argv[]) {
     double* tmp = array_old;
     array_old   = array_new;
     array_new   = tmp;
+
+    // Guardar captura cada 100 iteraciones para creacion de gif
+    if (step % 100 == 0) {
+        char filename[64];
+        snprintf(filename, sizeof(filename), "heat3d_step_%04d.vtk", step);
+        write_data_for_paraview(array_old, filename, N);
+    }
 }
 
     double t_end = omp_get_wtime();
@@ -210,6 +217,7 @@ int main(int argc, char* argv[]) {
     // Liberacion de memoria
     free_grid(array_old);
     free_grid(array_new);
+
 
     printf("Memoria liberada correctamente\n Fin del programa \n");
 
