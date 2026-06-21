@@ -31,6 +31,6 @@ Asistente Marlon Murillo
 |---|-------|---------|------|
 | 0 | 28 abr | `Tarea0_280426` | PThreads |
 | 1 | 19 may | `Tarea1_190526` | OpenMP |
-
+| 2 | - jun  | `Tarea2_120626` | MPI  |
 
 ---

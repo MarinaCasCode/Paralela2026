@@ -1,7 +1,7 @@
 // heat3d.cpp
 // Tarea 1 - CI-0117 Programacion Paralela y Concurrente
 // Simulacion de la ecuacion de calor 3D en estado estacionario.
-// Metodo de Jacobi con estencil de 6 vecinos + paralelizacion con OpenMp
+// Metodo de Jacobi con stencil de 6 vecinos + paralelizacion con OpenMp
 //
 // Compilacion: ver Makefile (g++ -O2 -fopenmp -Wall)
 // Uso: ./heat3dSerial [N] [NUM_STEPS]
