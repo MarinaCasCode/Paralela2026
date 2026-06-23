@@ -1,0 +1,17 @@
+# Binario y objetos
+cenatMD
+*.o
+
+# Salidas de SLURM
+*.out
+*.err
+
+# Archivos generados por la simulacion (posiciones para Paraview)
+*.vtk
+*.vtp
+*.pvd
+*.csv
+posiciones_*
+
+# Sistema
+.DS_Store
