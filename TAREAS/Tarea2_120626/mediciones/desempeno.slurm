@@ -13,7 +13,7 @@
 # Corrida de desempeno (competencia)
 #   mpiexec -np 16 ./cenatMD 200 7000 0 0
 # Config hibrida: 1 nodo x 16 ranks x 2 hilos = 32 cores.
-# Binding: cada rank a 2 cores (PE=2) + hilos OpenMP pegados a esos cores.
+# Binding: lo maneja SLURM (cpus-per-task=2); mpiexec con --bind-to none
 # ============================================================
 set -e
 
@@ -24,8 +24,6 @@ echo ">>> Compilando en nodo de computo..."
 make clean && make
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
-export OMP_PLACES=cores
-export OMP_PROC_BIND=close
 
 echo "============================================================"
 echo "Nodos:  $SLURM_JOB_NODELIST"
@@ -33,5 +31,9 @@ echo "Ranks:  $SLURM_NTASKS  |  Hilos/rank: $OMP_NUM_THREADS"
 echo "============================================================"
 
 echo ">>> Corrida de desempeno (np 16, N=200, 7000 iter)..."
-mpiexec --map-by ppr:16:node:PE=$OMP_NUM_THREADS --bind-to core \
-        -np $SLURM_NTASKS ./cenatMD 200 7000 0 0
+mpiexec --bind-to none -np $SLURM_NTASKS ./cenatMD 200 7000 0 0
+
+echo ""
+echo "============================================================"
+echo "Corrida completada"
+echo "============================================================"
