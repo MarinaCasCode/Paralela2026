@@ -19,6 +19,7 @@ static const double DELTA_T = 0.1;
 static const int    LATTICE_SIDE = 10;
 static const double LATTICE_GAP  = 1.2;
 static const double RANDOM_BOX   = 12.0;
+static const double SOFTENING = 1e-9;
 
 // ===================================================================
 // Modelo de particulas en SoA (un bloque contiguo de 9*n doubles).
@@ -81,41 +82,54 @@ static void initialize(ParticleSet* p, int n, int fixed, int global_offset, unsi
 // ===================================================================
 static void evolve(ParticleSet* A, ParticleSet* B, int nA, int nB) {
     if (A == B) {
-        // Auto-interaccion (fuerzas internas). Cada par (i,j) con j>i una vez.
         const int n = nA;
-        double* fx = A->fx; double* fy = A->fy; double* fz = A->fz;
+        double* __restrict__ fx = A->fx;
+        double* __restrict__ fy = A->fy;
+        double* __restrict__ fz = A->fz;
+        const double* __restrict__ x = A->x;
+        const double* __restrict__ y = A->y;
+        const double* __restrict__ z = A->z;
         #pragma omp parallel for schedule(guided) \
             reduction(+:fx[0:n], fy[0:n], fz[0:n])
         for (int i = 0; i < n; i++) {
+            double xi = x[i], yi = y[i], zi = z[i];
+            double afx = 0.0, afy = 0.0, afz = 0.0;
+            #pragma omp simd reduction(+:afx,afy,afz)
             for (int j = i + 1; j < n; j++) {
-                double rx = A->x[i] - A->x[j];
-                double ry = A->y[i] - A->y[j];
-                double rz = A->z[i] - A->z[j];
-                double r2 = rx*rx + ry*ry + rz*rz;
-                if (r2 == 0.0) continue;
+                double rx = xi - x[j];
+                double ry = yi - y[j];
+                double rz = zi - z[j];
+                double r2 = rx*rx + ry*ry + rz*rz + SOFTENING;
                 double inv_r   = 1.0 / sqrt(r2);
                 double inv_r2  = inv_r * inv_r;
                 double inv_r6  = inv_r2 * inv_r2 * inv_r2;
                 double inv_r12 = inv_r6 * inv_r6;
                 double f = B_COEF * inv_r12 - A_COEF * inv_r6;
                 double cfx = f * rx * inv_r, cfy = f * ry * inv_r, cfz = f * rz * inv_r;
-                fx[i] += cfx; fy[i] += cfy; fz[i] += cfz;
+                afx += cfx; afy += cfy; afz += cfz;
                 fx[j] -= cfx; fy[j] -= cfy; fz[j] -= cfz;
             }
+            fx[i] += afx; fy[i] += afy; fz[i] += afz;
         }
     } else {
         const int nb = nB;
-        double* Bfx = B->fx; double* Bfy = B->fy; double* Bfz = B->fz;
+        double* __restrict__ Bfx = B->fx;
+        double* __restrict__ Bfy = B->fy;
+        double* __restrict__ Bfz = B->fz;
+        const double* __restrict__ Bx = B->x;
+        const double* __restrict__ By = B->y;
+        const double* __restrict__ Bz = B->z;
         #pragma omp parallel for schedule(static) \
             reduction(+:Bfx[0:nb], Bfy[0:nb], Bfz[0:nb])
         for (int i = 0; i < nA; i++) {
-            double afx = 0.0, afy = 0.0, afz = 0.0;   // fuerza local acumulada (sin carrera)
-            for (int j = 0; j < nB; j++) {
-                double rx = A->x[i] - B->x[j];
-                double ry = A->y[i] - B->y[j];
-                double rz = A->z[i] - B->z[j];
-                double r2 = rx*rx + ry*ry + rz*rz;
-                if (r2 == 0.0) continue;
+            double xi = A->x[i], yi = A->y[i], zi = A->z[i];
+            double afx = 0.0, afy = 0.0, afz = 0.0;
+            #pragma omp simd reduction(+:afx,afy,afz)
+            for (int j = 0; j < nb; j++) {
+                double rx = xi - Bx[j];
+                double ry = yi - By[j];
+                double rz = zi - Bz[j];
+                double r2 = rx*rx + ry*ry + rz*rz + SOFTENING;
                 double inv_r   = 1.0 / sqrt(r2);
                 double inv_r2  = inv_r * inv_r;
                 double inv_r6  = inv_r2 * inv_r2 * inv_r2;
