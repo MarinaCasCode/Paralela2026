@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <mpi.h>
+#include <omp.h>
 
 // ----- Constantes fisicas del problema (dadas en el enunciado) -----
 static const double A_COEF  = 2.0;
@@ -74,31 +75,57 @@ static void initialize(ParticleSet* p, int n, int fixed, int global_offset, unsi
     }
 }
 
-// evolve: fuerzas de Van der Waals entre dos conjuntos (3ra ley de Newton).
-// A==B -> auto-interaccion (j>i, sin auto-fuerza); A!=B -> todos los pares.
+// ===================================================================
+// evolve: fuerzas de Van der Waals entre dos conjuntos (3ra ley de Newton)
+// paralelizado con OpenMP
+// ===================================================================
 static void evolve(ParticleSet* A, ParticleSet* B, int nA, int nB) {
-    const bool self = (A == B);
-    for (int i = 0; i < nA; i++) {
-        int j0 = self ? (i + 1) : 0;
-        for (int j = j0; j < nB; j++) {
-            double rx = A->x[i] - B->x[j];
-            double ry = A->y[i] - B->y[j];
-            double rz = A->z[i] - B->z[j];
-            double r2 = rx * rx + ry * ry + rz * rz;
-            if (r2 == 0.0) continue;
-
-            double inv_r   = 1.0 / sqrt(r2);
-            double inv_r2  = inv_r * inv_r;
-            double inv_r6  = inv_r2 * inv_r2 * inv_r2;
-            double inv_r12 = inv_r6 * inv_r6;
-            double f = B_COEF * inv_r12 - A_COEF * inv_r6;
-
-            double fx = f * rx * inv_r;
-            double fy = f * ry * inv_r;
-            double fz = f * rz * inv_r;
-
-            A->fx[i] += fx;  A->fy[i] += fy;  A->fz[i] += fz;
-            B->fx[j] -= fx;  B->fy[j] -= fy;  B->fz[j] -= fz;
+    if (A == B) {
+        // Auto-interaccion (fuerzas internas). Cada par (i,j) con j>i una vez.
+        const int n = nA;
+        double* fx = A->fx; double* fy = A->fy; double* fz = A->fz;
+        #pragma omp parallel for schedule(guided) \
+            reduction(+:fx[0:n], fy[0:n], fz[0:n])
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                double rx = A->x[i] - A->x[j];
+                double ry = A->y[i] - A->y[j];
+                double rz = A->z[i] - A->z[j];
+                double r2 = rx*rx + ry*ry + rz*rz;
+                if (r2 == 0.0) continue;
+                double inv_r   = 1.0 / sqrt(r2);
+                double inv_r2  = inv_r * inv_r;
+                double inv_r6  = inv_r2 * inv_r2 * inv_r2;
+                double inv_r12 = inv_r6 * inv_r6;
+                double f = B_COEF * inv_r12 - A_COEF * inv_r6;
+                double cfx = f * rx * inv_r, cfy = f * ry * inv_r, cfz = f * rz * inv_r;
+                fx[i] += cfx; fy[i] += cfy; fz[i] += cfz;
+                fx[j] -= cfx; fy[j] -= cfy; fz[j] -= cfz;
+            }
+        }
+    } else {
+        const int nb = nB;
+        double* Bfx = B->fx; double* Bfy = B->fy; double* Bfz = B->fz;
+        #pragma omp parallel for schedule(static) \
+            reduction(+:Bfx[0:nb], Bfy[0:nb], Bfz[0:nb])
+        for (int i = 0; i < nA; i++) {
+            double afx = 0.0, afy = 0.0, afz = 0.0;   // fuerza local acumulada (sin carrera)
+            for (int j = 0; j < nB; j++) {
+                double rx = A->x[i] - B->x[j];
+                double ry = A->y[i] - B->y[j];
+                double rz = A->z[i] - B->z[j];
+                double r2 = rx*rx + ry*ry + rz*rz;
+                if (r2 == 0.0) continue;
+                double inv_r   = 1.0 / sqrt(r2);
+                double inv_r2  = inv_r * inv_r;
+                double inv_r6  = inv_r2 * inv_r2 * inv_r2;
+                double inv_r12 = inv_r6 * inv_r6;
+                double f = B_COEF * inv_r12 - A_COEF * inv_r6;
+                double cfx = f * rx * inv_r, cfy = f * ry * inv_r, cfz = f * rz * inv_r;
+                afx += cfx; afy += cfy; afz += cfz;
+                Bfx[j] -= cfx; Bfy[j] -= cfy; Bfz[j] -= cfz;
+            }
+            A->fx[i] += afx; A->fy[i] += afy; A->fz[i] += afz;
         }
     }
 }
@@ -112,9 +139,9 @@ static void merge(ParticleSet* locals, ParticleSet* returned, int n) {
     }
 }
 
-// updateProperties: aceleracion -> velocidad -> posicion (Euler semi-implicito),
-// y reinicia las fuerzas en cero para la siguiente iteracion.
+// updateProperties: aceleracion -> velocidad -> posicion (Euler semi-implicito)
 static void updateProperties(ParticleSet* p, int n) {
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < n; i++) {
         double ax = p->fx[i] / MASS;
         double ay = p->fy[i] / MASS;
@@ -147,11 +174,8 @@ static void unpack6(ParticleSet* p, int n, const double* buf) {
 }
 
 // ===================================================================
-// compute_forces_ring: calcula la fuerza total sobre las particulas
-// locales usando el anillo logico (pasos a-f del enunciado).
-//
-// nsteps = size/2  ->  (size-1)/2 si size impar, size/2 si size par.
-// Manejo de paridad
+// compute_forces_ring: fuerza total sobre las locales usando el anillo (a-f).
+//   nsteps = size/2  ->  (size-1)/2 si size impar, size/2 si size par.
 // ===================================================================
 static void compute_forces_ring(ParticleSet* locals, ParticleSet* remotes,
                                 double* sendbuf, double* recvbuf,
@@ -199,9 +223,7 @@ static void compute_forces_ring(ParticleSet* locals, ParticleSet* remotes,
 
 // ===================================================================
 // gather_and_write: rank 0 recolecta (MPI_Gather) las posiciones de todas
-// las particulas del sistema y escribe un CSV en orden global.
-// Empaca [x,y,z,vmag] por particula; el Gather concatena por rank, lo que
-// da exactamente el orden global de indices.
+// las particulas y escribe un CSV en orden global.
 // ===================================================================
 static void gather_and_write(ParticleSet* locals, int n, int rank, int size, int iter,
                              double* gsend, double* grecv) {
@@ -254,9 +276,9 @@ int main(int argc, char* argv[]) {
     }
 
     if (rank == 0) {
-        printf("=== cenatMD (Fase 2: anillo MPI) ===\n");
-        printf("Procesos MPI = %d | N por proceso = %d | total = %d | iteraciones = %d\n",
-               size, N, N * size, iters);
+        printf("=== cenatMD (Fase 4: MPI + OpenMP) ===\n");
+        printf("Procesos MPI = %d | hilos OpenMP/rank = %d | N/proc = %d | total = %d | iter = %d\n",
+               size, omp_get_max_threads(), N, N * size, iters);
         printf("BANDERA_IMP = %d | BANDERA_INI = %d\n", flagImp, flagIni);
     }
 
