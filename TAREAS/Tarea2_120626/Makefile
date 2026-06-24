@@ -9,7 +9,7 @@
 #   module load openmpi
 
 MPICXX   = mpicxx
-CXXFLAGS = -O3 -march=native -funroll-loops -fopenmp -Wall -Wextra -std=c++17
+CXXFLAGS = -O3 -march=native -funroll-loops -ffast-math -fopenmp -Wall -Wextra -std=c++17
 TARGET   = cenatMD
 SRCDIR   = src
 SRC      = $(SRCDIR)/cenatMD.cpp
