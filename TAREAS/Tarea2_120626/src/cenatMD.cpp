@@ -14,7 +14,7 @@ static const double A_COEF  = 2.0;
 static const double B_COEF  = 1.0;
 static const double MASS    = 4.0;
 static const double DELTA_T = 0.1;
-static const double SOFTENING = 1e-9;
+static double SOFTENING = 1e-9;
 
 // ----- Constantes de la inicializacion -----
 static const int    LATTICE_SIDE = 10;
@@ -288,6 +288,7 @@ int main(int argc, char* argv[]) {
     int flagImp  = (argc >= 4) ? atoi(argv[3]) : 0;
     int flagIni  = (argc >= 5) ? atoi(argv[4]) : 0;
     int scenario = (argc >= 6) ? atoi(argv[5]) : 0;   // 1 = colision de dos cumulos (viz)
+    if (scenario == 1) SOFTENING = 0.5;
 
     if (N < 1 || iters < 1) {
         if (rank == 0)
