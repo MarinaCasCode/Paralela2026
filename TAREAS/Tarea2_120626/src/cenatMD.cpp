@@ -1,7 +1,7 @@
 // cenatMD.cpp
 
-// Compilacion: ver Makefile (mpicxx -O2 -fopenmp)
-// Ejecucion:   mpiexec -np <#Ranks> ./cenatMD <N> <ITERACIONES> <BANDERA_IMP> <BANDERA_INI>
+// Ejecucion:  mpiexec -np <R> ./cenatMD <N> <ITER> <IMP> <INI> [SCENARIO]
+//   SCENARIO (opcional) = 1 -> colision de dos cumulos (para la visualizacion).
 
 #include <cstdio>
 #include <cstdlib>
@@ -14,12 +14,17 @@ static const double A_COEF  = 2.0;
 static const double B_COEF  = 1.0;
 static const double MASS    = 4.0;
 static const double DELTA_T = 0.1;
+static const double SOFTENING = 1e-9;
 
 // ----- Constantes de la inicializacion -----
 static const int    LATTICE_SIDE = 10;
 static const double LATTICE_GAP  = 1.2;
 static const double RANDOM_BOX   = 12.0;
-static const double SOFTENING = 1e-9;
+
+// ----- Escenario de visualizacion: colision de dos cumulos (5to arg = 1) -----
+static const double CLUSTER_R     = 5.0;    // radio de cada cumulo
+static const double CLUSTER_SEP   = 12.0;   // distancia del centro de cada cumulo al origen
+static const double CLUSTER_SPEED = 0.15;   // velocidad de acercamiento de cada cumulo
 
 // ===================================================================
 // Modelo de particulas en SoA (un bloque contiguo de 9*n doubles).
@@ -56,29 +61,48 @@ static inline double next_random(unsigned int* state) {
     return (double) ((*state >> 16) & 0x7FFF) / 32767.0;
 }
 
-static void initialize(ParticleSet* p, int n, int fixed, int global_offset, unsigned int seed) {
+// ===================================================================
+// Inicializacion. scenario=1 -> colision de dos cumulos (viz).
+// ===================================================================
+static void initialize(ParticleSet* p, int n, int flagIni, int scenario,
+                       int global_offset, int total, unsigned int seed) {
     for (int i = 0; i < n; i++) {
-        if (fixed) {
-            int gid = global_offset + i;
+        int gid = global_offset + i;
+        if (scenario == 1) {
+            // Colision de dos cumulos. Primera mitad (por indice global) -> cumulo
+            // en -x moviendose hacia +x; segunda mitad -> cumulo en +x hacia -x.
+            unsigned int s = (unsigned int)(gid + 1) * 2654435761u;   // semilla por particula
+            int half = total / 2;
+            double cx    = (gid < half) ? -CLUSTER_SEP   :  CLUSTER_SEP;
+            double vbulk = (gid < half) ?  CLUSTER_SPEED : -CLUSTER_SPEED;
+            double ox, oy, oz;
+            do {                                   // posicion aleatoria dentro de una esfera
+                ox = (2.0 * next_random(&s) - 1.0) * CLUSTER_R;
+                oy = (2.0 * next_random(&s) - 1.0) * CLUSTER_R;
+                oz = (2.0 * next_random(&s) - 1.0) * CLUSTER_R;
+            } while (ox*ox + oy*oy + oz*oz > CLUSTER_R * CLUSTER_R);
+            p->x[i] = cx + ox; p->y[i] = oy; p->z[i] = oz;
+            p->vx[i] = vbulk;  p->vy[i] = 0.0; p->vz[i] = 0.0;
+        } else if (flagIni) {
             int ix = gid % LATTICE_SIDE;
             int iy = (gid / LATTICE_SIDE) % LATTICE_SIDE;
             int iz = gid / (LATTICE_SIDE * LATTICE_SIDE);
             p->x[i] = ix * LATTICE_GAP;
             p->y[i] = iy * LATTICE_GAP;
             p->z[i] = iz * LATTICE_GAP;
+            p->vx[i] = 0.0; p->vy[i] = 0.0; p->vz[i] = 0.0;
         } else {
             p->x[i] = next_random(&seed) * RANDOM_BOX;
             p->y[i] = next_random(&seed) * RANDOM_BOX;
             p->z[i] = next_random(&seed) * RANDOM_BOX;
+            p->vx[i] = 0.0; p->vy[i] = 0.0; p->vz[i] = 0.0;
         }
-        p->vx[i] = 0.0; p->vy[i] = 0.0; p->vz[i] = 0.0;
         p->fx[i] = 0.0; p->fy[i] = 0.0; p->fz[i] = 0.0;
     }
 }
 
 // ===================================================================
-// evolve: fuerzas de Van der Waals entre dos conjuntos (3ra ley de Newton)
-// paralelizado con OpenMP
+// evolve: fuerzas de Van der Waals entre dos conjuntos (3ra ley de Newton).
 // ===================================================================
 static void evolve(ParticleSet* A, ParticleSet* B, int nA, int nB) {
     if (A == B) {
@@ -144,7 +168,6 @@ static void evolve(ParticleSet* A, ParticleSet* B, int nA, int nB) {
     }
 }
 
-// merge: suma a las locales las reacciones que las remotas trajeron de regreso.
 static void merge(ParticleSet* locals, ParticleSet* returned, int n) {
     for (int i = 0; i < n; i++) {
         locals->fx[i] += returned->fx[i];
@@ -153,7 +176,6 @@ static void merge(ParticleSet* locals, ParticleSet* returned, int n) {
     }
 }
 
-// updateProperties: aceleracion -> velocidad -> posicion (Euler semi-implicito)
 static void updateProperties(ParticleSet* p, int n) {
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < n; i++) {
@@ -170,10 +192,6 @@ static void updateProperties(ParticleSet* p, int n) {
     }
 }
 
-// ===================================================================
-// Empaque/desempaque de posicion+fuerza (6 columnas) en un buffer
-// contiguo de 6*n doubles, para enviarlo en UN solo mensaje MPI.
-// ===================================================================
 static void pack6(const ParticleSet* p, int n, double* buf) {
     for (int i = 0; i < n; i++) {
         buf[0*n+i] = p->x[i];  buf[1*n+i] = p->y[i];  buf[2*n+i] = p->z[i];
@@ -187,14 +205,9 @@ static void unpack6(ParticleSet* p, int n, const double* buf) {
     }
 }
 
-// ===================================================================
-// compute_forces_ring: fuerza total sobre las locales usando el anillo (a-f).
-//   nsteps = size/2  ->  (size-1)/2 si size impar, size/2 si size par.
-// ===================================================================
 static void compute_forces_ring(ParticleSet* locals, ParticleSet* remotes,
                                 double* sendbuf, double* recvbuf,
                                 int n, int rank, int size) {
-    // remotes = copia de las posiciones locales, con fuerzas en cero.
     for (int i = 0; i < n; i++) {
         remotes->x[i] = locals->x[i];
         remotes->y[i] = locals->y[i];
@@ -207,8 +220,6 @@ static void compute_forces_ring(ParticleSet* locals, ParticleSet* remotes,
     int left   = (rank - 1 + size) % size;
     MPI_Status st;
 
-    // Medio-anillo: las remotas se desplazan a la derecha; cada rank calcula
-    // la interaccion con las remotas que lo visitan (pasos a-d).
     for (int step = 1; step <= nsteps; step++) {
         pack6(remotes, n, sendbuf);
         MPI_Sendrecv(sendbuf, 6*n, MPI_DOUBLE, right, 0,
@@ -222,23 +233,18 @@ static void compute_forces_ring(ParticleSet* locals, ParticleSet* remotes,
         }
     }
 
-    // Paso e: devolver las remotas a su procesador original y combinar.
-    int dest = (rank - nsteps + size) % size;   // origen de las remotas que tengo
-    int src  = (rank + nsteps) % size;           // quien me devuelve MIS remotas
+    int dest = (rank - nsteps + size) % size;
+    int src  = (rank + nsteps) % size;
     pack6(remotes, n, sendbuf);
     MPI_Sendrecv(sendbuf, 6*n, MPI_DOUBLE, dest, 1,
                  recvbuf, 6*n, MPI_DOUBLE, src,  1,
                  MPI_COMM_WORLD, &st);
-    unpack6(remotes, n, recvbuf);   // remotes = MIS particulas con las reacciones recogidas
+    unpack6(remotes, n, recvbuf);
 
-    merge(locals, remotes, n);      // paso f (parte 1): sumar reacciones de regreso
-    evolve(locals, locals, n, n);   // paso f (parte 2): fuerzas internas propias
+    merge(locals, remotes, n);
+    evolve(locals, locals, n, n);
 }
 
-// ===================================================================
-// gather_and_write: rank 0 recolecta (MPI_Gather) las posiciones de todas
-// las particulas y escribe un CSV en orden global.
-// ===================================================================
 static void gather_and_write(ParticleSet* locals, int n, int rank, int size, int iter,
                              double* gsend, double* grecv) {
     for (int i = 0; i < n; i++) {
@@ -277,23 +283,24 @@ int main(int argc, char* argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    int N       = (argc >= 2) ? atoi(argv[1]) : 100;
-    int iters   = (argc >= 3) ? atoi(argv[2]) : 100;
-    int flagImp = (argc >= 4) ? atoi(argv[3]) : 0;
-    int flagIni = (argc >= 5) ? atoi(argv[4]) : 0;
+    int N        = (argc >= 2) ? atoi(argv[1]) : 100;
+    int iters    = (argc >= 3) ? atoi(argv[2]) : 100;
+    int flagImp  = (argc >= 4) ? atoi(argv[3]) : 0;
+    int flagIni  = (argc >= 5) ? atoi(argv[4]) : 0;
+    int scenario = (argc >= 6) ? atoi(argv[5]) : 0;   // 1 = colision de dos cumulos (viz)
 
     if (N < 1 || iters < 1) {
         if (rank == 0)
-            fprintf(stderr, "Uso: mpiexec -np <R> ./cenatMD <N> <ITER> <IMP> <INI>\n");
+            fprintf(stderr, "Uso: mpiexec -np <R> ./cenatMD <N> <ITER> <IMP> <INI> [SCENARIO]\n");
         MPI_Finalize();
         return EXIT_FAILURE;
     }
 
     if (rank == 0) {
-        printf("=== cenatMD (Fase 4: MPI + OpenMP) ===\n");
+        printf("=== cenatMD (MPI + OpenMP) ===\n");
         printf("Procesos MPI = %d | hilos OpenMP/rank = %d | N/proc = %d | total = %d | iter = %d\n",
                size, omp_get_max_threads(), N, N * size, iters);
-        printf("BANDERA_IMP = %d | BANDERA_INI = %d\n", flagImp, flagIni);
+        printf("BANDERA_IMP = %d | BANDERA_INI = %d | SCENARIO = %d\n", flagImp, flagIni, scenario);
     }
 
     ParticleSet locals, remotes;
@@ -304,7 +311,7 @@ int main(int argc, char* argv[]) {
     double* gsend   = (double*) malloc((size_t) 4 * N * sizeof(double));
     double* grecv   = (double*) malloc((size_t) 4 * N * size * sizeof(double));
 
-    initialize(&locals, N, flagIni, rank * N, (unsigned int)(rank + 1));
+    initialize(&locals, N, flagIni, scenario, rank * N, N * size, (unsigned int)(rank + 1));
 
     double t0 = MPI_Wtime();
     for (int it = 0; it < iters; it++) {
