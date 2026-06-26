@@ -9,6 +9,9 @@
 #include <mpi.h>
 #include <omp.h>
 
+#include <xmmintrin.h>
+#include <pmmintrin.h>
+
 // ----- Constantes fisicas del problema (dadas en el enunciado) -----
 static const double A_COEF  = 2.0;
 static const double B_COEF  = 1.0;
@@ -282,6 +285,11 @@ int main(int argc, char* argv[]) {
     int rank = 0, size = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+    #pragma omp parallel
+    {
+        _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+        _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+    }
 
     int N        = (argc >= 2) ? atoi(argv[1]) : 100;
     int iters    = (argc >= 3) ? atoi(argv[2]) : 100;
