@@ -302,6 +302,7 @@ int main(int argc, char* argv[]) {
         printf("Procesos MPI = %d | hilos OpenMP/rank = %d | N/proc = %d | total = %d | iter = %d\n",
                size, omp_get_max_threads(), N, N * size, iters);
         printf("BANDERA_IMP = %d | BANDERA_INI = %d | SCENARIO = %d\n", flagImp, flagIni, scenario);
+        printf("SOFTENING efectiva = %g\n", SOFTENING);
     }
 
     ParticleSet locals, remotes;
