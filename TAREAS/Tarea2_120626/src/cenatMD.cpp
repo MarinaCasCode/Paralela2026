@@ -25,9 +25,9 @@ static const double LATTICE_GAP  = 1.2;
 static const double RANDOM_BOX   = 12.0;
 
 // ----- Escenario de visualizacion: colision de dos cumulos (5to arg = 1) -----
-static const double CLUSTER_GAP   = 0.9;    // espaciado de la malla cristalina del cumulo
-static const double CLUSTER_SEP   = 12.0;   // distancia del centro de cada cumulo al origen
-static const double CLUSTER_SPEED = 0.1;    // velocidad de acercamiento de cada cumulo
+static const double CLUSTER_GAP   = 0.6;    // espaciado ~equilibrio -> cumulos estables
+static const double CLUSTER_SEP   = 10.0;   // distancia del centro de cada cumulo al origen
+static const double CLUSTER_SPEED = 0.06;   // velocidad de acercamiento (suave)
 
 // ===================================================================
 // Modelo de particulas en SoA (un bloque contiguo de 9*n doubles).
@@ -72,7 +72,7 @@ static void initialize(ParticleSet* p, int n, int flagIni, int scenario,
     for (int i = 0; i < n; i++) {
         int gid = global_offset + i;
         if (scenario == 1) {
-            // Colision de dos cumulos cristalinos 
+            // Colision de dos cumulos cristalinos
             int half    = total / 2;
             int cluster = (gid < half) ? 0 : 1;
             int c       = (cluster == 0) ? gid : (gid - half);   // indice dentro del cumulo
@@ -83,9 +83,13 @@ static void initialize(ParticleSet* p, int n, int flagIni, int scenario,
             int iz = c / (L * L);
             double cx    = (cluster == 0) ? -CLUSTER_SEP   :  CLUSTER_SEP;
             double vbulk = (cluster == 0) ?  CLUSTER_SPEED : -CLUSTER_SPEED;
-            p->x[i] = cx + (ix - L / 2.0) * CLUSTER_GAP;
-            p->y[i] =      (iy - L / 2.0) * CLUSTER_GAP;
-            p->z[i] =      (iz - L / 2.0) * CLUSTER_GAP;
+            unsigned int s = (unsigned int)(gid + 1) * 2654435761u;
+            double jx = (next_random(&s) - 0.5) * CLUSTER_GAP * 0.3;
+            double jy = (next_random(&s) - 0.5) * CLUSTER_GAP * 0.3;
+            double jz = (next_random(&s) - 0.5) * CLUSTER_GAP * 0.3;
+            p->x[i] = cx + (ix - L / 2.0) * CLUSTER_GAP + jx;
+            p->y[i] =      (iy - L / 2.0) * CLUSTER_GAP + jy;
+            p->z[i] =      (iz - L / 2.0) * CLUSTER_GAP + jz;
             p->vx[i] = vbulk;  p->vy[i] = 0.0; p->vz[i] = 0.0;
         } else if (flagIni) {
             int ix = gid % LATTICE_SIDE;
