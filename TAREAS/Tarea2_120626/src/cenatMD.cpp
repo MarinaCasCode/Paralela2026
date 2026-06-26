@@ -9,12 +9,15 @@
 #include <mpi.h>
 #include <omp.h>
 
+#include <xmmintrin.h>
+#include <pmmintrin.h>
+
 // ----- Constantes fisicas del problema (dadas en el enunciado) -----
 static const double A_COEF  = 2.0;
 static const double B_COEF  = 1.0;
 static const double MASS    = 4.0;
 static const double DELTA_T = 0.1;
-static const double SOFTENING = 1e-9;
+static double SOFTENING = 1e-9;
 
 // ----- Constantes de la inicializacion -----
 static const int    LATTICE_SIDE = 10;
@@ -22,9 +25,9 @@ static const double LATTICE_GAP  = 1.2;
 static const double RANDOM_BOX   = 12.0;
 
 // ----- Escenario de visualizacion: colision de dos cumulos (5to arg = 1) -----
-static const double CLUSTER_R     = 5.0;    // radio de cada cumulo
-static const double CLUSTER_SEP   = 12.0;   // distancia del centro de cada cumulo al origen
-static const double CLUSTER_SPEED = 0.15;   // velocidad de acercamiento de cada cumulo
+static const double CLUSTER_GAP   = 0.5;    // espaciado ~equilibrio -> cumulos estables
+static const double CLUSTER_SEP   = 10.0;   // distancia del centro de cada cumulo al origen
+static const double CLUSTER_SPEED = 0.06;   // velocidad de acercamiento (suave)
 
 // ===================================================================
 // Modelo de particulas en SoA (un bloque contiguo de 9*n doubles).
@@ -69,19 +72,24 @@ static void initialize(ParticleSet* p, int n, int flagIni, int scenario,
     for (int i = 0; i < n; i++) {
         int gid = global_offset + i;
         if (scenario == 1) {
-            // Colision de dos cumulos. Primera mitad (por indice global) -> cumulo
-            // en -x moviendose hacia +x; segunda mitad -> cumulo en +x hacia -x.
-            unsigned int s = (unsigned int)(gid + 1) * 2654435761u;   // semilla por particula
-            int half = total / 2;
-            double cx    = (gid < half) ? -CLUSTER_SEP   :  CLUSTER_SEP;
-            double vbulk = (gid < half) ?  CLUSTER_SPEED : -CLUSTER_SPEED;
-            double ox, oy, oz;
-            do {                                   // posicion aleatoria dentro de una esfera
-                ox = (2.0 * next_random(&s) - 1.0) * CLUSTER_R;
-                oy = (2.0 * next_random(&s) - 1.0) * CLUSTER_R;
-                oz = (2.0 * next_random(&s) - 1.0) * CLUSTER_R;
-            } while (ox*ox + oy*oy + oz*oz > CLUSTER_R * CLUSTER_R);
-            p->x[i] = cx + ox; p->y[i] = oy; p->z[i] = oz;
+            // Colision de dos cumulos cristalinos
+            int half    = total / 2;
+            int cluster = (gid < half) ? 0 : 1;
+            int c       = (cluster == 0) ? gid : (gid - half);   // indice dentro del cumulo
+            int Nc      = half;                                   // particulas por cumulo
+            int L       = (int) ceil(cbrt((double) Nc));          // lado de la malla cubica
+            int ix = c % L;
+            int iy = (c / L) % L;
+            int iz = c / (L * L);
+            double cx    = (cluster == 0) ? -CLUSTER_SEP   :  CLUSTER_SEP;
+            double vbulk = (cluster == 0) ?  CLUSTER_SPEED : -CLUSTER_SPEED;
+            unsigned int s = (unsigned int)(gid + 1) * 2654435761u;
+            double jx = (next_random(&s) - 0.5) * CLUSTER_GAP * 0.3;
+            double jy = (next_random(&s) - 0.5) * CLUSTER_GAP * 0.3;
+            double jz = (next_random(&s) - 0.5) * CLUSTER_GAP * 0.3;
+            p->x[i] = cx + (ix - L / 2.0) * CLUSTER_GAP + jx;
+            p->y[i] =      (iy - L / 2.0) * CLUSTER_GAP + jy;
+            p->z[i] =      (iz - L / 2.0) * CLUSTER_GAP + jz;
             p->vx[i] = vbulk;  p->vy[i] = 0.0; p->vz[i] = 0.0;
         } else if (flagIni) {
             int ix = gid % LATTICE_SIDE;
@@ -282,12 +290,18 @@ int main(int argc, char* argv[]) {
     int rank = 0, size = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+    #pragma omp parallel
+    {
+        _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+        _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+    }
 
     int N        = (argc >= 2) ? atoi(argv[1]) : 100;
     int iters    = (argc >= 3) ? atoi(argv[2]) : 100;
     int flagImp  = (argc >= 4) ? atoi(argv[3]) : 0;
     int flagIni  = (argc >= 5) ? atoi(argv[4]) : 0;
     int scenario = (argc >= 6) ? atoi(argv[5]) : 0;   // 1 = colision de dos cumulos (viz)
+    if (scenario == 1) SOFTENING = 0.5;
 
     if (N < 1 || iters < 1) {
         if (rank == 0)
@@ -301,6 +315,7 @@ int main(int argc, char* argv[]) {
         printf("Procesos MPI = %d | hilos OpenMP/rank = %d | N/proc = %d | total = %d | iter = %d\n",
                size, omp_get_max_threads(), N, N * size, iters);
         printf("BANDERA_IMP = %d | BANDERA_INI = %d | SCENARIO = %d\n", flagImp, flagIni, scenario);
+        printf("SOFTENING efectiva = %g\n", SOFTENING);
     }
 
     ParticleSet locals, remotes;
