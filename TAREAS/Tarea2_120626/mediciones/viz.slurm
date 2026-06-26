@@ -25,7 +25,7 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 rm -f posiciones_*.csv
 echo ">>> Generando frames de la colision (np 8)..."
-time mpiexec --bind-to none -np $SLURM_NTASKS ./cenatMD 200 2000 1 0 1
+time mpiexec --bind-to none -np $SLURM_NTASKS ./cenatMD 200 3000 1 0 1
 
 echo ">>> Frames generados:"
 ls posiciones_*.csv | wc -l
