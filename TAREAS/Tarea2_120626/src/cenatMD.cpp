@@ -25,7 +25,7 @@ static const double LATTICE_GAP  = 1.2;
 static const double RANDOM_BOX   = 12.0;
 
 // ----- Escenario de visualizacion: colision de dos cumulos (5to arg = 1) -----
-static const double CLUSTER_GAP   = 0.5;    // espaciado ~equilibrio -> cumulos estables
+static const double CLUSTER_GAP   = 0.54;    // espaciado ~equilibrio -> cumulos estables
 static const double CLUSTER_SEP   = 10.0;   // distancia del centro de cada cumulo al origen
 static const double CLUSTER_SPEED = 0.06;   // velocidad de acercamiento (suave)
 
