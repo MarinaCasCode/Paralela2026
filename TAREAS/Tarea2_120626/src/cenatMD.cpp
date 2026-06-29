@@ -1,5 +1,8 @@
 // cenatMD.cpp
-
+// Tarea 2 - CI-0117 Programacion Paralela y Concurrente
+// Simulacion n-body: interaccion de particulas por fuerzas de Van der Waals.
+// Version hibrida MPI + OpenMP.
+//
 // Ejecucion:  mpiexec -np <R> ./cenatMD <N> <ITER> <IMP> <INI> [SCENARIO]
 //   SCENARIO (opcional) = 1 -> colision de dos cumulos (para la visualizacion).
 
@@ -18,6 +21,7 @@ static const double B_COEF  = 1.0;
 static const double MASS    = 4.0;
 static const double DELTA_T = 0.1;
 static double SOFTENING = 1e-9;
+static int OUTPUT_EVERY = 100;   // cada cuantas iteraciones se escribe un frame
 
 // ----- Constantes de la inicializacion -----
 static const int    LATTICE_SIDE = 10;
@@ -25,7 +29,7 @@ static const double LATTICE_GAP  = 1.2;
 static const double RANDOM_BOX   = 12.0;
 
 // ----- Escenario de visualizacion: colision de dos cumulos (5to arg = 1) -----
-static const double CLUSTER_GAP   = 0.54;    // espaciado ~equilibrio -> cumulos estables
+static const double CLUSTER_GAP   = 0.54;   // espaciado ~equilibrio -> cumulos estables
 static const double CLUSTER_SEP   = 10.0;   // distancia del centro de cada cumulo al origen
 static const double CLUSTER_SPEED = 0.06;   // velocidad de acercamiento (suave)
 
@@ -301,7 +305,7 @@ int main(int argc, char* argv[]) {
     int flagImp  = (argc >= 4) ? atoi(argv[3]) : 0;
     int flagIni  = (argc >= 5) ? atoi(argv[4]) : 0;
     int scenario = (argc >= 6) ? atoi(argv[5]) : 0;   // 1 = colision de dos cumulos (viz)
-    if (scenario == 1) SOFTENING = 0.5;
+    if (scenario == 1) { SOFTENING = 0.5; OUTPUT_EVERY = 25; }
 
     if (N < 1 || iters < 1) {
         if (rank == 0)
@@ -332,7 +336,7 @@ int main(int argc, char* argv[]) {
     for (int it = 0; it < iters; it++) {
         compute_forces_ring(&locals, &remotes, sendbuf, recvbuf, N, rank, size);
         updateProperties(&locals, N);
-        if (flagImp && (it % 100 == 0)) {
+        if (flagImp && (it % OUTPUT_EVERY == 0)) {
             gather_and_write(&locals, N, rank, size, it, gsend, grecv);
         }
     }
