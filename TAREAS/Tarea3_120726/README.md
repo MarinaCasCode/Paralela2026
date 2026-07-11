@@ -1,0 +1,2 @@
+La forma más eficiente y estándar de convertir una imagen a escala de grises en C es procesar sus píxeles aplicando la fórmula de luminancia (basada en cómo el ojo humano percibe los colores):Gris = 0.299 × R + 0.587 × G + 0.114 × BPara implementarlo, generalmente se utiliza una biblioteca de terceros como OpenCV (para cualquier formato) o se manipula manualmente la cabecera si trabajas con archivos BMP puros.
+
