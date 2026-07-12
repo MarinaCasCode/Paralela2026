@@ -2,16 +2,15 @@
 #
 # Uso local (Mac/Linux sin GPU, solo valida CPU y correctitud del codigo):
 #   make            -> compila con g++ (ignora los #pragma acc)
-#   make run        -> compila y ejecuta con imagenesEntrada/gatito.jpg
+#   make run        -> compila y ejecuta, mostrando el menu de seleccion de imagen
 #
 # Uso en Kabre (nodo nukwa, con NVIDIA HPC SDK):
 #   make gpu        -> compila con nvc++ y soporte real de OpenACC
-#   make run-gpu    -> compila con nvc++ y ejecuta
+#   make run-gpu    -> compila con nvc++ y ejecuta, mostrando el menu de seleccion de imagen
 #
 #   make clean      -> borra los ejecutables generados
 
 SRC = src/main.cpp src/imagen_io.cpp src/escalaGrises.cpp src/gaussianBlur.cpp src/gaussianBlurGPU.cpp
-IMG = imagenesEntrada/gatito.jpg
 
 # ---- Compilacion local (g++, sin GPU real) ----
 CXX = g++
@@ -31,13 +30,13 @@ $(OUT): $(SRC)
 	$(CXX) $(CXXFLAGS) $(SRC) -o $(OUT)
 
 run: $(OUT)
-	./$(OUT) $(IMG)
+	./$(OUT)
 
 gpu: $(SRC)
 	$(CXX_ACC) $(CXXFLAGS_ACC) $(SRC) -o $(OUT_ACC)
 
 run-gpu: gpu
-	./$(OUT_ACC) $(IMG)
+	./$(OUT_ACC)
 
 clean:
 	rm -f $(OUT) $(OUT_ACC)
