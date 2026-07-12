@@ -8,9 +8,11 @@
 #include "imagen_io.hpp"
 #include "escalaGrises.hpp"
 #include "gaussianBlur.hpp"
+#include "gaussianBlurGPU.hpp"  
 
 int main (int argc, char **argv) {
     std::string ruta_entrada = (argc > 1) ? argv [1]: "imagenesEntrada/gatito.jpg";
+    
 
     // Numero de veces que se aplica el kernel 3x3 
     // Cada pasada difumina un poco mas (mismo kernel, aplicado repetidamente)
@@ -29,19 +31,38 @@ int main (int argc, char **argv) {
 
         // Gaussian blur en CPU, aplicado numIteraciones veces,
         // con medicion del tiempo TOTAL de las iteraciones.
-        auto inicio = std::chrono::high_resolution_clock::now();
+        auto inicioCPU = std::chrono::high_resolution_clock::now();
 
         std::vector<uint8_t> salida = gris; // punto de partida: la imagen en gris
         for (int i = 0; i < numIteraciones; ++i) {
             salida = gaussianBlurCPU(salida, imagen.ancho, imagen.alto);
         }
 
-        auto fin = std::chrono::high_resolution_clock::now();
+        auto finCPU = std::chrono::high_resolution_clock::now();
 
     
-        double tiempoCPUms = std::chrono::duration<double, std::milli>(fin - inicio).count();
+        double tiempoCPUms = std::chrono::duration<double, std::milli>(finCPU - inicioCPU).count();
         std::cout << "Blur gaussiano aplicado en CPU (" << numIteraciones << " iteraciones). Tiempo de ejecución: " << tiempoCPUms << " ms\n";
 
+        // Gaussian blur en GPU, aplicado numIteraciones veces,
+        // con medicion del tiempo TOTAL de las iteraciones.
+        auto inicioGPU = std::chrono::high_resolution_clock::now();
+
+        std::vector<uint8_t> salidaGPU = gris;
+        for (int i = 0; i < numIteraciones; ++i) {
+            salidaGPU = gaussianBlurGPU(salidaGPU, imagen.ancho, imagen.alto);
+        }
+
+        auto finGPU = std::chrono::high_resolution_clock::now();
+        double tiempoGPUms = std::chrono::duration<double, std::milli>(finGPU - inicioGPU).count();
+        std::cout << "Blur gaussiano GPU (" << numIteraciones
+                  << " pasadas). Tiempo: " << tiempoGPUms << " ms\n";
+
+        // Speedup: tiempoCPU / tiempoGPU
+        double speedup = tiempoCPUms / tiempoGPUms;
+        std::cout << "Speedup (CPU/GPU): " << speedup << "\n";
+
+        //GUARDAR IMAGENES
         // se guarda imagen en ggris para validar visualmente
         Imagen imagenGris;
         imagenGris.ancho = imagen.ancho;
@@ -51,14 +72,23 @@ int main (int argc, char **argv) {
         guardarImagen("imagenesSalida/gatitoGris.png", imagenGris);
         std::cout << "Imagen en escala de grises guardada en: imagenesSalida/gatitoGris.png\n";
 
-         // se guarda imagen con blur gaussiano aplicado, para validar visualmente
-        Imagen imagenBlur;
-        imagenBlur.ancho = imagen.ancho;
-        imagenBlur.alto = imagen.alto;
-        imagenBlur.canales = 1; // escala de grises
-        imagenBlur.datos = salida;
-        guardarImagen("imagenesSalida/gatitoBlur_cpu.png", imagenBlur);
+         // se guarda imagen con blur gaussiano aplicado en CPU, para validar visualmente
+        Imagen imagenBlur_CPU; // no se guarda como imagenBlurCPU para evitar confusión con la función gaussianBlurCPU
+        imagenBlur_CPU.ancho = imagen.ancho;
+        imagenBlur_CPU.alto = imagen.alto;
+        imagenBlur_CPU.canales = 1; // escala de grises
+        imagenBlur_CPU.datos = salida;
+        guardarImagen("imagenesSalida/gatitoBlurCPU.png", imagenBlur_CPU);
         std::cout << "Imagen con blur gaussiano (CPU) guardada en: imagenesSalida/gatitoBlurCPU.png\n";
+
+        // se guarda imagen con blur gaussiano aplicado en GPU, para validar visualmente
+        Imagen imagenBlur_GPU; // no se guarad como imagenBlurGPU para evitar confusión con la función gaussianBlurGPU
+        imagenBlur_GPU.ancho = imagen.ancho;
+        imagenBlur_GPU.alto = imagen.alto;
+        imagenBlur_GPU.canales = 1;
+        imagenBlur_GPU.datos = salidaGPU;
+        guardarImagen("imagenesSalida/gatitoBlurGPU.png", imagenBlur_GPU);
+        std::cout << "Imagen con blur (GPU) guardada en: imagenesSalida/gatitoBlurGPU.png\n";
 
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << "\n";

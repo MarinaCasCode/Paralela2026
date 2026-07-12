@@ -1,18 +1,29 @@
 # Makefile para Tarea 4 - Procesamiento de Imagenes en GPU
-# Uso:
-#   make            -> compila el programa
-#   make run         -> compila y ejecuta con imagenesEntrada/gatito.jpg
-#   make clean       -> borra el ejecutable generado
+#
+# Uso local (Mac/Linux sin GPU, solo valida CPU y correctitud del codigo):
+#   make            -> compila con g++ (ignora los #pragma acc)
+#   make run        -> compila y ejecuta con imagenesEntrada/gatito.jpg
+#
+# Uso en Kabre (nodo nukwa, con NVIDIA HPC SDK):
+#   make gpu        -> compila con nvc++ y soporte real de OpenACC
+#   make run-gpu    -> compila con nvc++ y ejecuta
+#
+#   make clean      -> borra los ejecutables generados
 
-CXX = g++
-CXXFLAGS = -std=c++17 -O2 -I include
-
-SRC = src/main.cpp src/imagen_io.cpp src/escalaGrises.cpp src/gaussianBlur.cpp
-OUT = imagenesSalida/test_blur
-
+SRC = src/main.cpp src/imagen_io.cpp src/escalaGrises.cpp src/gaussianBlur.cpp src/gaussianBlurGPU.cpp
 IMG = imagenesEntrada/gatito.jpg
 
-.PHONY: all run clean
+# ---- Compilacion local (g++, sin GPU real) ----
+CXX = g++
+CXXFLAGS = -std=c++17 -O2 -I include
+OUT = imagenesSalida/test_blur
+
+# ---- Compilacion en Kabre (nvc++, con OpenACC real) ----
+CXX_ACC = nvc++
+CXXFLAGS_ACC = -std=c++17 -O2 -I include -acc -Minfo=accel
+OUT_ACC = imagenesSalida/test_blur_gpu
+
+.PHONY: all run gpu run-gpu clean
 
 all: $(OUT)
 
@@ -22,5 +33,11 @@ $(OUT): $(SRC)
 run: $(OUT)
 	./$(OUT) $(IMG)
 
+gpu: $(SRC)
+	$(CXX_ACC) $(CXXFLAGS_ACC) $(SRC) -o $(OUT_ACC)
+
+run-gpu: gpu
+	./$(OUT_ACC) $(IMG)
+
 clean:
-	rm -f $(OUT)
+	rm -f $(OUT) $(OUT_ACC)
