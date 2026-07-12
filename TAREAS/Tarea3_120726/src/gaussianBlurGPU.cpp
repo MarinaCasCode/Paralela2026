@@ -23,9 +23,7 @@ std::vector<uint8_t> gaussianBlurGPU(const std::vector<uint8_t> &entrada, int an
 
     // #pragma acc data:
     // Aquí se usa OpenACC para paralelizar el bucle externo (y) y el bucle interno (x)
-    // copyIn(entradaPtr[0:numPixeles]) // copiar datos de entrada a la GPU
-    // copyOut(salidaPtr[0:numPixeles]) // copiar datos de salida de la GPU a la CPU
-    #pragma acc data copyIn(entradaPtr[0:numPixeles]) copyOut(salidaPtr[0:numPixeles])
+    #pragma acc data copyin(entradaPtr[0:numPixeles]) copyout(salidaPtr[0:numPixeles])
     {
         // pragama: colapsar bucles y y x para paralelizar, en un solo esapcio de iteracion
         // para que la GPU reparta cada pixel existente entre sus hilos disponibles
