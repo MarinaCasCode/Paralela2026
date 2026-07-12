@@ -1,7 +1,7 @@
 #include "gaussianBlur.hpp"
 #include <algorithm> // para clamp, min y max
 
-// funcion para "clamp" -> mantiene íindice dentro de los límites de la imagen (0, limite-1)
+// funcion para "clamp" -> mantiene índice dentro de los límites de la imagen (0, limite-1)
 static inline int clamp(int valor, int limite) {
     return std::min(std::max(valor, 0), limite - 1);
 }
@@ -37,6 +37,6 @@ std::vector<uint8_t> gaussianBlurCPU(const std::vector<uint8_t> &entrada, int an
             salida[y * ancho + x] = static_cast<uint8_t>(suma / sumaKernel);
         }
     }
-    
+
     return salida;
 }

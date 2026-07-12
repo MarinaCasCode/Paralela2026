@@ -12,6 +12,10 @@
 int main (int argc, char **argv) {
     std::string ruta_entrada = (argc > 1) ? argv [1]: "imagenesEntrada/gatito.jpg";
 
+    // Numero de veces que se aplica el kernel 3x3 
+    // Cada pasada difumina un poco mas (mismo kernel, aplicado repetidamente)
+    const int numIteraciones = 60;
+
     try {
         Imagen imagen = cargarImagen(ruta_entrada);
         std::cout << "Imagen cargada: " << ruta_entrada << "\n";
@@ -23,13 +27,20 @@ int main (int argc, char **argv) {
         std::vector<uint8_t> gris = convertirEscalaGrises(imagen);
         std::cout << "Imagen convertida a escala de grises. Tamaño del vector: " << gris.size() << "\n";
 
-        // Gaussian blur en CPU con medicion de tiempo
+        // Gaussian blur en CPU, aplicado numIteraciones veces,
+        // con medicion del tiempo TOTAL de las iteraciones.
         auto inicio = std::chrono::high_resolution_clock::now();
-        std::vector<uint8_t> salida = gaussianBlurCPU(gris, imagen.ancho, imagen.alto);
+
+        std::vector<uint8_t> salida = gris; // punto de partida: la imagen en gris
+        for (int i = 0; i < numIteraciones; ++i) {
+            salida = gaussianBlurCPU(salida, imagen.ancho, imagen.alto);
+        }
+
         auto fin = std::chrono::high_resolution_clock::now();
 
+    
         double tiempoCPUms = std::chrono::duration<double, std::milli>(fin - inicio).count();
-        std::cout << "Blur gaussiano aplicado en CPU. Tiempo de ejecución: " << tiempoCPUms << " ms\n";
+        std::cout << "Blur gaussiano aplicado en CPU (" << numIteraciones << " iteraciones). Tiempo de ejecución: " << tiempoCPUms << " ms\n";
 
         // se guarda imagen en ggris para validar visualmente
         Imagen imagenGris;
@@ -47,7 +58,7 @@ int main (int argc, char **argv) {
         imagenBlur.canales = 1; // escala de grises
         imagenBlur.datos = salida;
         guardarImagen("imagenesSalida/gatitoBlur_cpu.png", imagenBlur);
-        std::cout << "Imagen con blur gaussiano (CPU) guardada en: imagenesSalida/gatitoBlur_cpu.png\n";
+        std::cout << "Imagen con blur gaussiano (CPU) guardada en: imagenesSalida/gatitoBlurCPU.png\n";
 
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << "\n";
