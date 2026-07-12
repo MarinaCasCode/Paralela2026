@@ -128,10 +128,7 @@ int main (int argc, char **argv) {
         imprimirSeparador("BLUR GAUSSIANO - GPU (OpenACC)");
         auto inicioGPU = std::chrono::high_resolution_clock::now();
 
-        std::vector<uint8_t> salidaGPU = gris;
-        for (int i = 0; i < numIteraciones; ++i) {
-            salidaGPU = gaussianBlurGPU(salidaGPU, imagen.ancho, imagen.alto);
-        }
+        std::vector<uint8_t> salidaGPU = gaussianBlurGPU(gris, imagen.ancho, imagen.alto, numIteraciones);
 
         auto finGPU = std::chrono::high_resolution_clock::now();
         double tiempoGPUms = std::chrono::duration<double, std::milli>(finGPU - inicioGPU).count();
